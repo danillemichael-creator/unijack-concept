@@ -1,0 +1,69 @@
+/* TBench / UniJack shared foundations — used by the UniJack page and every
+   /tbench/ page. Colour, type, spacing, motion and browser surfaces. */
+@font-face{font-family:'Archivo';src:url('./assets/fonts/archivo-var-latin.woff2') format('woff2');font-weight:100 900;font-stretch:62% 125%;font-display:swap;unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'Martian Mono';src:url('./assets/fonts/martian-mono-var-latin.woff2') format('woff2');font-weight:100 800;font-stretch:75% 112.5%;font-display:swap;unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+/* Metric-matched fallback keeps layout steady while Archivo loads. */
+@font-face{font-family:'Archivo Fallback';src:local('Arial'),local('Helvetica Neue'),local('Helvetica');size-adjust:101%;ascent-override:89%;descent-override:22%;line-gap-override:0%}
+
+:root{
+ color-scheme:dark;
+ /* Ground: TBench navy. Cyan is a signal colour: traces, active states, focus. */
+ --c-ground:#060b11;
+ --c-ground-2:#09121b;
+ --c-surface:#0d1823;
+ --c-surface-2:#12212f;
+ --c-raised:#172a3a;
+ --c-line:rgba(150,196,220,.13);
+ --c-line-2:rgba(150,196,220,.24);
+ --c-ink:#edf3f6;
+ --c-ink-2:#aebcc6;
+ --c-ink-3:#8698a6;
+ --c-cyan:#74e2f4;
+ --c-cyan-2:#a9eefa;
+ --c-cyan-ink:#04161c;
+ --c-cyan-soft:rgba(116,226,244,.1);
+ /* Light band (product photography sits on white). */
+ --c-paper:#eef2f3;
+ --c-paper-2:#ffffff;
+ --c-paper-line:#d3dde0;
+ --c-paper-ink:#11232b;
+ --c-paper-ink-2:#465c66;
+ --c-paper-accent:#086b78;
+ /* Service band: TBench's deep green, kept, retuned toward the navy. */
+ --c-service:#0a2422;
+ --c-service-line:#244b46;
+ --c-service-ink:#e6f2ef;
+ --c-service-ink-2:#b4cbc4;
+ --c-service-accent:#9fe3cf;
+
+ --font-sans:'Archivo','Archivo Fallback',system-ui,sans-serif;
+ --font-mono:'Martian Mono',ui-monospace,'SFMono-Regular',Menlo,monospace;
+ --wide:118%;          /* display width */
+ --text-xs:.75rem;     /* 12px floor for labels */
+ --text-sm:.875rem;
+ --text-md:1rem;
+ --text-lg:1.125rem;
+ --text-xl:clamp(1.25rem,1.1rem + .5vw,1.5rem);
+ --text-2xl:clamp(1.75rem,1.3rem + 1.6vw,2.5rem);
+ --text-3xl:clamp(2.25rem,1.5rem + 2.9vw,4rem);
+ --text-4xl:clamp(2.75rem,1.6rem + 4.4vw,5.5rem);
+
+ --s-1:4px;--s-2:8px;--s-3:12px;--s-4:16px;--s-5:24px;--s-6:32px;--s-7:48px;--s-8:64px;--s-9:96px;--s-10:144px;
+ --gutter:clamp(16px,4.2vw,64px);
+ --max:1440px;
+ --header:64px;
+ --radius:6px;
+ --radius-lg:10px;
+
+ --ease-out:cubic-bezier(.23,1,.32,1);
+ --ease-in-out:cubic-bezier(.77,0,.175,1);
+ --dur-1:140ms;--dur-2:200ms;--dur-3:260ms;
+ --shadow-1:0 1px 2px rgba(0,0,0,.25),0 8px 24px rgba(0,0,0,.18);
+ --shadow-2:0 2px 4px rgba(0,0,0,.25),0 18px 48px rgba(0,0,0,.32);
+}
+@media (max-width:959px){:root{--header:56px}}
+
+/* Browser surfaces carry the palette too. */
+::selection{background:rgba(116,226,244,.28);color:var(--c-ink)}
+html{scrollbar-color:#2c4556 var(--c-ground);accent-color:var(--c-cyan);caret-color:var(--c-cyan)}
+:focus-visible{outline:2px solid var(--c-cyan);outline-offset:3px;border-radius:2px}
