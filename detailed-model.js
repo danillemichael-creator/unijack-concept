@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from './vendor/RoundedBoxGeometry.js';
 import { mergeGeometries } from './vendor/BufferGeometryUtils.js';
 import { DIMENSIONS as D, contactCenters } from './dimensions.js';
-import { microFinish, photoFinish } from './material-finish.js';
+import { microFinish, photoFinish, refinePhotoFinish } from './material-finish.js';
 
 // Model units are millimetres. Reference dimensions and inferred dimensions are separated in dimensions.js.
 // Source coordinates refer to the campaign photos at a 2048px-wide display scale.
@@ -12,6 +12,10 @@ const periPhotoQuad=[[1407,44],[1955,43],[1984,1105],[1421,1106]];
 const loader = new THREE.TextureLoader();
 const originals = {};
 const photoFinishes = {};
+// Progressive photos: the model is built on tiny previews (a few KB), then the
+// full WebP textures replace them. UVs are normalised, so any size maps the same.
+const clonesOf = {}, finishClonesOf = {};
+const photoURL = (file, size) => new URL(`./assets/textures/${file.replace('.jpg', '')}-${size}.webp`, import.meta.url).href;
 const makeMat=(name,color,metalness,roughness)=>Object.assign(new THREE.MeshPhysicalMaterial({color,metalness,roughness}),{name});
 const M={
  pcb:makeMat('Teal solder mask','#006277',0,.32), blue:makeMat('Mercury solder mask','#06304e',0,.32),
@@ -40,11 +44,11 @@ function strip(p,points,width,thickness,mat,name){
  const shape=new THREE.Shape([...a,...b.reverse()]);const geo=new THREE.ExtrudeGeometry(shape,{depth:width,bevelEnabled:false});geo.translate(0,0,-width/2);return mesh(p,geo,mat,name);
 }
 function solderFoot(p,x,z,w,d){return box(p,x,.08,z,w,.16,d,M.solder,'Solder land',.035);}
-function mapFrom(file,rect){const t=originals[file].clone();t.needsUpdate=true;t.repeat.set(rect[2]/2048,rect[3]/1152);t.offset.set(rect[0]/2048,1-(rect[1]+rect[3])/1152);t.anisotropy=12;return t;}
+function mapFrom(file,rect){const t=originals[file].clone();(clonesOf[file]??=[]).push(t);t.needsUpdate=true;t.repeat.set(rect[2]/2048,rect[3]/1152);t.offset.set(rect[0]/2048,1-(rect[1]+rect[3])/1152);t.anisotropy=12;return t;}
 function photoMat(file,rect,name){
  const board=/solder mask|back photographic/.test(name),cap=/capacitor/.test(name);
  const mat=new THREE.MeshPhysicalMaterial({map:mapFrom(file,rect),color:board?'#d3dbdf':'#d5d5d5',metalness:cap?.7:0,roughness:board?1:cap?.36:.86,clearcoat:board?.16:0,clearcoatRoughness:.38,specularIntensity:board?.65:.7});
- if(board){const finish=photoFinishes[file].clone();finish.repeat.copy(mat.map.repeat);finish.offset.copy(mat.map.offset);finish.needsUpdate=true;mat.roughnessMap=finish;}
+ if(board){const finish=photoFinishes[file].clone();(finishClonesOf[file]??=[]).push(finish);finish.repeat.copy(mat.map.repeat);finish.offset.copy(mat.map.offset);finish.needsUpdate=true;mat.roughnessMap=finish;}
  return Object.assign(mat,{name});
 }
 function plane(p,x,y,z,w,d,m){const n=mesh(p,new THREE.PlaneGeometry(w,d),m);n.rotation.x=-Math.PI/2;n.position.set(x,y,z);return n;}
@@ -234,15 +238,17 @@ function optimize(root){
    const obj=new THREE.Mesh(merged,mat);obj.name=mat.name;obj.castShadow=true;obj.receiveShadow=true;major.add(obj);geos.forEach(g=>g.dispose());}
  }
 }
-export async function buildDetailedModel(){
+export async function buildDetailedModel({full=2048,finishWidth=1536,shouldStop=()=>false}={}){
  primitives=0;passives=0;
  const metalGrain=microFinish('metal'),polymerGrain=microFinish('polymer');
  for(const mat of [M.silver,M.solder,M.ceramic]){mat.roughnessMap=metalGrain.roughness;mat.normalMap=metalGrain.normal;mat.normalScale.set(.24,.08);}
  for(const mat of [M.black,M.chip,M.ivory,M.tan,M.bronze,M.green,M.rugged]){mat.roughnessMap=polymerGrain.roughness;mat.normalMap=polymerGrain.normal;mat.normalScale.set(.045,.045);}
  M.rugged.normalScale.set(.35,.35);
  for(const mat of [M.pcb,M.blue]){mat.clearcoat=.30;mat.clearcoatRoughness=.25;}
- await Promise.all(Object.values(photoFiles).map(async f=>{if(!originals[f]){const t=await loader.loadAsync(new URL(`./assets/${f}`,import.meta.url).href);t.colorSpace=THREE.SRGBColorSpace;originals[f]=t;}}));
- for(const file of Object.keys(originals))photoFinishes[file]??=photoFinish(originals[file]);
+ await Promise.all(Object.values(photoFiles).map(async f=>{if(!originals[f]){const t=await loader.loadAsync(photoURL(f,'tiny'));t.colorSpace=THREE.SRGBColorSpace;originals[f]=t;}}));
+ performance.mark('uj:previews-loaded');if(shouldStop())throw new Error('cancelled');
+ // Satin masks start small (from the previews) and are re-derived at full size later.
+ for(const file of Object.keys(originals))photoFinishes[file]??=photoFinish(originals[file],256);
  const root=new THREE.Group();root.name='UniJack_photo_reconstruction_v2';root.userData={status:'PHOTO-BASED APPROXIMATION — NOT CAD',scale:'Model units: millimetres. Connector reference dimensions; Mercury depth and carrier outline inferred, not measured.',sources:['Crowd Supply UniJack campaign gallery 1–4'],underside:'Base and PeriBoard underside not photographed; plain inferred surfaces'};
  root.userData.materials='Visual appearance inferred from actual campaign photographs. Authored roughness; no measured material scans or confirmed plating composition.';
  const base=group(root,'UniJack_baseboard'),mercury=group(root,'Mercury_module'),peri=group(root,'PeriBoard');
@@ -332,5 +338,19 @@ power(base,-73.8,-27.6);terminal(base);usb(base,-72.1,6.0);ethernet(base,-72.5,2
  root.userData.dimensionReferences=D;root.userData.boardMounting={base:mountReport(base),peri:mountReport(peri)};
  const before=primitives;optimize(root);let triangles=0,drawCalls=0;root.traverse(n=>{if(n.isMesh){drawCalls++;triangles+=n.geometry.attributes.position.count/3;}});
  root.userData.geometry={authoredPrimitives:before,raisedPassives:passives,triangles,materialBatches:drawCalls};
- return {root,base,mercury,peri,stats:root.userData.geometry,rest:{mercury:mercury.position.clone(),peri:peri.position.clone()}};
+ // Fetch and decode the full photos; resolves with apply() (texture swap) and
+ // refineFinish() (re-derives the satin masks; heavier, run when idle).
+ async function upgradeTextures(){
+  const images = {};
+  await Promise.all(Object.keys(originals).map(async f => {
+   const img = new Image(); img.decoding = 'async'; img.src = photoURL(f, full);
+   await img.decode(); images[f] = img;
+  }));
+  return {
+   // GPU storage was sized for the preview: release it so it is reallocated.
+   apply(){ for (const f of Object.keys(images)) { originals[f].image = images[f]; for (const t of [originals[f], ...(clonesOf[f] || [])]) { t.dispose(); t.needsUpdate = true; } } },
+   refineFinish(){ for (const f of Object.keys(images)) { const map = photoFinishes[f]; refinePhotoFinish(map, images[f], finishWidth); for (const t of [map, ...(finishClonesOf[f] || [])]) { t.dispose(); t.needsUpdate = true; } } }
+  };
+ }
+ return {root,base,mercury,peri,upgradeTextures,stats:root.userData.geometry,rest:{mercury:mercury.position.clone(),peri:peri.position.clone()}};
 }

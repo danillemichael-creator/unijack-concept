@@ -25,9 +25,15 @@ function contactShadow(){
  mesh.rotation.x=-Math.PI/2;mesh.renderOrder=-1;return mesh;
 }
 
-export async function createStoryScene(host,{lite=false,instant=false,onFrame=()=>{}}={}){
+export async function createStoryScene(host,{lite=false,instant=false,onFrame=()=>{},shouldStop=()=>false}={}){
+ // shouldStop() lets the page give up (and show the still photo) between the
+ // heavy steps instead of blocking until the board is finished.
+ const stopIfLate=()=>{if(shouldStop())throw new Error('cancelled');};
+ performance.mark('uj:scene-start');
+ // Phones get the 1024px photos, larger screens 2048px; both start on tiny previews.
+ const source=await buildDetailedModel({full:lite||innerWidth<960?1024:2048,finishWidth:lite||innerWidth<960?768:1536,shouldStop});
+ performance.mark('uj:model-built');stopIfLate();
  const renderer=new THREE.WebGLRenderer({alpha:true,antialias:true,powerPreference:lite?'low-power':'high-performance'});
- const source=await buildDetailedModel();
  const maxRatio=lite?1.5:1.75;
  renderer.setClearColor(0x000000,0);renderer.outputColorSpace=THREE.SRGBColorSpace;
  renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=.92;
@@ -230,13 +236,41 @@ export async function createStoryScene(host,{lite=false,instant=false,onFrame=()
  resize();
  // Warm-up while the canvas is still invisible: draw the exploded and
  // top-down poses once so no shader or shadow pass compiles mid-scroll.
+ performance.mark('uj:first-render');
+ if(shouldStop()){resizeObserver.disconnect();disposeEnvironment();renderer.dispose();canvas.remove();throw new Error('cancelled');}
  if(!instant){for(const p of [.42,.8,0]){state.p=state.target=p;shadowDirty=true;render();}}
  host.dataset.webgl='ready';host.classList.add('ready');
+ canvas.dataset.textures='preview';
+
+ // Progressive textures: once the full photos are decoded and the reveal has
+ // finished, swap them in under a 250ms crossfade of the last preview frame.
+ function crossfadeSwap(apply){
+  render();
+  const snap=document.createElement('canvas');snap.width=canvas.width;snap.height=canvas.height;
+  snap.getContext('2d').drawImage(canvas,0,0);
+  snap.className='stage-webgl-snap';snap.setAttribute('aria-hidden','true');
+  snap.style.cssText=`position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:${getComputedStyle(canvas).opacity};transition:opacity 250ms cubic-bezier(.23,1,.32,1)`;
+  canvas.after(snap);
+  apply();shadowDirty=true;render();
+  canvas.dataset.textures='full';
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{snap.style.opacity='0';setTimeout(()=>snap.remove(),400);}));
+ }
+ // Heavy steps (texture upload, mask rebuild) wait for a pause in scrolling.
+ let lastInput=0;
+ addEventListener('scroll',()=>{lastInput=performance.now();},{passive:true});
+ const settled=()=>state.intro>=1&&!dragging&&performance.now()-lastInput>300&&Math.abs(state.target-state.p)<1e-4&&Math.abs(state.weightTarget-state.weight)<1e-4;
+ const whenSettled=async()=>{const t0=performance.now();while(!settled()&&performance.now()-t0<15000)await new Promise(r=>setTimeout(r,120));};
+ source.upgradeTextures().then(async upgrade=>{
+  await whenSettled();
+  crossfadeSwap(upgrade.apply);
+  await new Promise(r=>setTimeout(r,400));await whenSettled();
+  upgrade.refineFinish();request();
+ }).catch(error=>console.warn('Full product photos unavailable; keeping previews',error));
  Object.assign(canvas.dataset,{triangles:String(source.stats.triangles),materialBatches:String(source.stats.materialBatches)});
 
  return {
   canvas,
-  setProgress(value){state.target=Math.min(1,Math.max(0,value));if(instant)state.p=state.target;request();},
+  setProgress(value){const v=Math.min(1,Math.max(0,value));if(v!==state.target)lastInput=performance.now();state.target=v;if(instant)state.p=state.target;request();},
   setOverride(o){
    if(o){state.override={focus:'all',inspection:'overview',insertion:1,...o};state.weightTarget=1;}
    else state.weightTarget=0;
