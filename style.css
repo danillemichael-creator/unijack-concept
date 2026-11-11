@@ -353,7 +353,7 @@ html:not([data-story=on]) .routing-copy>p:first-of-type{grid-row:1/span 2}
  [data-story=on] .assembly-stage .detail-views button{flex:1;padding:0 8px}
  [data-story=on] .assembly-copy{position:relative;pointer-events:auto;padding:var(--s-6) 0 var(--s-8);background:linear-gradient(to bottom,rgba(6,11,17,0),var(--c-ground) 32px)}
  [data-story=on] #routing{padding-top:var(--stage-h);pointer-events:none}
- [data-story=on] .routing-copy{position:relative;pointer-events:auto;padding:var(--s-6) 0 70svh;background:linear-gradient(to bottom,rgba(6,11,17,0),var(--c-ground) 32px 40%,rgba(6,11,17,0) 70%)}
+ [data-story=on] .routing-copy{position:relative;pointer-events:auto;padding:var(--s-6) 0 120svh;background:linear-gradient(to bottom,rgba(6,11,17,0),var(--c-ground) 32px,var(--c-ground) calc(100% - 120svh),rgba(6,11,17,0) calc(100% - 120svh))}
  [data-story=on] .routing-panel{pointer-events:auto;margin-top:0}
  [data-story=on] .story-schematic{position:fixed;z-index:0;box-shadow:none}
 }

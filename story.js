@@ -91,7 +91,10 @@ function measure(){
  if (!storyOn) return;
  const yPlatform = docTop(sections.platform), yAsm = docTop(sections.assembly);
  const yAsmEnd = yAsm + sections.assembly.offsetHeight, yRoute = docTop(sections.routing), yPanel = docTop(sections.panel);
- const raw = [[0,0],[yPlatform - vh*.4,STORY.yaw[1]],[yAsm - vh*.05,STORY.pull[1]],[yAsmEnd - vh*.95,STORY.hold[1]],[yRoute + vh*.05,STORY.topDown[1]],[yPanel - vh*.9,1]];
+ // On phones the routing copy must clear the pinned stage before the drawing starts.
+ const copy = document.querySelector('.routing-copy');
+ const copyEnd = docTop(copy) + copy.offsetHeight - parseFloat(getComputedStyle(copy).paddingBottom);
+ const raw = [[0,0],[yPlatform - vh*.4,STORY.yaw[1]],[yAsm - vh*.05,STORY.pull[1]],[yAsmEnd - vh*.95,STORY.hold[1]],[compact.matches ? copyEnd - vh*.05 : yRoute + vh*.05,STORY.topDown[1]],[yPanel - vh*.9,1]];
  knots = []; let prev = -1;
  for (const [y,p] of raw) { const value = Math.max(prev + 1, y); knots.push([value,p]); prev = value; }
  const graphicTop = docTop(sections.graphic);
