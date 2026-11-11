@@ -228,6 +228,9 @@ export async function createStoryScene(host,{lite=false,instant=false,onFrame=()
  }
  const resizeObserver=new ResizeObserver(resize);resizeObserver.observe(host);
  resize();
+ // Warm-up while the canvas is still invisible: draw the exploded and
+ // top-down poses once so no shader or shadow pass compiles mid-scroll.
+ if(!instant){for(const p of [.42,.8,0]){state.p=state.target=p;shadowDirty=true;render();}}
  host.dataset.webgl='ready';host.classList.add('ready');
  Object.assign(canvas.dataset,{triangles:String(source.stats.triangles),materialBatches:String(source.stats.materialBatches)});
 

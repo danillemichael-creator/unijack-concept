@@ -71,6 +71,7 @@ async function loadSchematic(){
   [...svg.children].forEach(el => { if (!/^(defs|style)$/.test(el.tagName) && !el.matches('.trace')) groups.rest.push(el); });
   overlay.append(svg);
   overlayGroups = groups;
+
   root.dataset.schematic = 'ready';
   update(true);
  } catch (error) {
@@ -190,6 +191,17 @@ function layoutOverlay(){
  overlayBox = {x, y: storyOn ? y : y - region.top, width, height: width*941/1672, left: x - region.left};
  overlay.style.width = width + 'px'; overlay.style.height = overlayBox.height + 'px';
 }
+// Rasterise the drawing once, almost transparent, so its first real frame
+// during the story does not pay for the initial paint.
+let prewarmed = false;
+function prewarmOverlay(){
+ if (prewarmed || !storyOn || !overlayGroups || !overlayBox || !scene) return;
+ prewarmed = true;
+ overlay.style.opacity = '.004';
+ overlay.style.transform = `translate3d(${overlayBox.x}px,${overlayBox.y}px,0)`;
+ overlayGroups.rest.forEach(el => el.style.opacity = '1');
+ requestAnimationFrame(() => requestAnimationFrame(() => update(true)));
+}
 function drawSchematic(p, h){
  if (!overlayGroups) return;
  const s = span(p, STORY.schematic);
@@ -296,12 +308,12 @@ function init(){
  new ResizeObserver(relayout).observe(document.body);
  document.fonts?.ready.then(relayout);
  document.addEventListener('visibilitychange', () => scene?.setActive(!document.hidden && (!storyOn || handoffT < 1)));
- loadSchematic().then(() => { layoutOverlay(); update(true); });
+ loadSchematic().then(() => { layoutOverlay(); update(true); prewarmOverlay(); });
  update(true);
  // Load three.js after first paint, when the browser is idle.
  if (root.dataset.saveData === 'on') return;
  // The board is the hero: start loading right after first paint.
- requestAnimationFrame(() => setTimeout(() => loadScene().then(s => { if (s) { layoutOverlay(); update(true); } }), 0));
+ requestAnimationFrame(() => setTimeout(() => loadScene().then(s => { if (s) { layoutOverlay(); update(true); prewarmOverlay(); } }), 0));
 }
 
 export const story = {
