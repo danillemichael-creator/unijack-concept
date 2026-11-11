@@ -18,9 +18,9 @@ const sections = {
 };
 const callout = document.querySelector('#callout-label');
 const CALLOUTS = {
- assembled:'UniJack ecosystem<span>PLATFORM · CONTROLLER · PERIPHERALS</span>',
- exploded:'One connected ecosystem<span>PLATFORM · CONTROLLER · PERIPHERALS</span>',
- routing:'ERAU routing fabric<span>ILLUSTRATIVE SIGNAL PATHS</span>'
+ assembled:'UniJack ecosystem<span>Platform · controller · peripherals</span>',
+ exploded:'One connected ecosystem<span>Platform · controller · peripherals</span>',
+ routing:'ERAU routing fabric<span>Illustrative signal paths</span>'
 };
 const VIEW_PROGRESS = {assembled:0, exploded:.5, routing:1};
 
@@ -91,10 +91,7 @@ function measure(){
  if (!storyOn) return;
  const yPlatform = docTop(sections.platform), yAsm = docTop(sections.assembly);
  const yAsmEnd = yAsm + sections.assembly.offsetHeight, yRoute = docTop(sections.routing), yPanel = docTop(sections.panel);
- // On phones the routing copy must clear the pinned stage before the drawing starts.
- const copy = document.querySelector('.routing-copy');
- const copyEnd = docTop(copy) + copy.offsetHeight - parseFloat(getComputedStyle(copy).paddingBottom);
- const raw = [[0,0],[yPlatform - vh*.4,STORY.yaw[1]],[yAsm - vh*.05,STORY.pull[1]],[yAsmEnd - vh*.95,STORY.hold[1]],[compact.matches ? copyEnd - vh*.05 : yRoute + vh*.05,STORY.topDown[1]],[yPanel - vh*.9,1]];
+ const raw = [[0,0],[yPlatform - vh*.4,STORY.yaw[1]],[yAsm - vh*.05,STORY.pull[1]],[yAsmEnd - vh*.95,STORY.hold[1]],[yRoute + vh*.05,STORY.topDown[1]],[yPanel - vh*.9,1]];
  knots = []; let prev = -1;
  for (const [y,p] of raw) { const value = Math.max(prev + 1, y); knots.push([value,p]); prev = value; }
  const graphicTop = docTop(sections.graphic);
@@ -114,6 +111,47 @@ function scrollForProgress(p){
   if (p <= p1) return y0 + (y1 - y0) * (p - p0) / (p1 - p0 || 1);
  }
  return knots.at(-1)[0];
+}
+
+// ---------- Stage text: each beat's copy pins above the board and fades ----------
+// A beat's text fades in over the last stretch of its travel into the band and
+// fades out as its beat runs out. The hero only fades out.
+const beats = [...document.querySelectorAll('.story-beat')].map(beat => ({
+ beat,
+ els: beat.matches('.hero') ? [...beat.querySelectorAll(':scope > .hero-copy, :scope > .hero-bottom')]
+  : beat.matches('.assembly-section') ? [beat.querySelector('.assembly-copy')]
+  : [beat.querySelector('.story-text')],
+ hero: beat.matches('.hero')
+}));
+const smooth = t => t * t * (3 - 2 * t);
+function fadeBeats(){
+ const ramp = vh * .2;
+ for (const {beat, els, hero} of beats) {
+  const box = beat.getBoundingClientRect();
+  for (const el of els) {
+   if (!el) continue;
+   let o;
+   if (hero) o = 1 - smooth(Math.min(1, Math.max(0, scrollY / (vh * .32))));
+   else {
+    const r = el.getBoundingClientRect(), stick = parseFloat(getComputedStyle(el).top) || 0;
+    const into = 1 - Math.min(1, Math.max(0, (r.top - stick) / ramp));
+    const left = Math.min(1, Math.max(0, (box.bottom - r.bottom) / ramp));
+    o = smooth(Math.min(into, left));
+   }
+   el.style.opacity = o.toFixed(3);
+   el.style.pointerEvents = o > .5 ? '' : 'none';
+  }
+ }
+}
+// Keyboard focus moving into faded text brings that beat into view first.
+function revealOnFocus(event){
+ const entry = beats.find(b => b.els.some(el => el && el.contains(event.target)));
+ if (!entry || entry.hero) return;
+ const el = entry.els.find(e => e && e.contains(event.target));
+ if (parseFloat(el.style.opacity || '1') > .9) return;
+ const stick = parseFloat(getComputedStyle(el).top) || 0;
+ const top = docTop(entry.beat) + Math.max(0, (entry.beat.offsetHeight - el.offsetHeight) * .45) - stick;
+ scrollTo({top, behavior: 'instant'});
 }
 
 // ---------- Render the non-3D parts of the stage ----------
@@ -186,7 +224,7 @@ function update(force = false){
   const y = scrollY;
   const p = progressAt(y);
   const h = Math.min(1, Math.max(0, (y - handoff.from) / (handoff.to - handoff.from)));
-  if (!force && p === progress && h === handoffT) return;
+  if (!force && p === progress && h === handoffT) { fadeBeats(); return; }
   progress = p; handoffT = h;
   setView(viewFor(p));
   root.dataset.chapter = p > STORY.pull[0] + .2 && p < STORY.leave[0] + .02 ? 'assembly' : 'story';
@@ -197,6 +235,7 @@ function update(force = false){
   scene?.setActive(h < 1 && !document.hidden);
   scene?.setProgress(p);
   drawSchematic(p, h);
+  fadeBeats();
  } else {
   drawSchematic(VIEW_PROGRESS[staticView] >= 1 ? 1 : 0, 0);
  }
@@ -233,6 +272,7 @@ function init(){
  if (storyOn) document.body.append(overlay); else stage.append(overlay);
  measure();
  addEventListener('scroll', requestUpdate, {passive: true});
+ if (storyOn) document.addEventListener('focusin', revealOnFocus);
  const relayout = () => { measure(); layoutOverlay(); update(true); };
  addEventListener('resize', relayout);
  new ResizeObserver(relayout).observe(document.body);
