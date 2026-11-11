@@ -22,22 +22,25 @@ h2 span,h1 span{color:var(--c-on-dark-3)}
 p{text-wrap:pretty}
 
 /* ---------- Eyebrows: one quiet line, centred ---------- */
-.eyebrow,.ed-kicker{display:block;margin:0 0 var(--s-3);color:var(--c-on-dark-2);font:600 var(--t-eyebrow)/1.2 var(--font-sans);letter-spacing:-.01em;text-transform:none}
+.eyebrow,.ed-kicker{display:block;margin:0 0 var(--s-3);color:var(--c-accent);font:600 var(--t-eyebrow)/1.2 var(--font-sans);letter-spacing:-.01em;text-transform:none}
 .eyebrow i{display:none}
 /* Small functional labels stay, quieter. */
 .micro,.hero-meta,.carousel-head,.carousel-foot,.card-top small,.slide-tab small,.art-head,.art-legend,.feature-photo>span,.sub-card-header,.sub-card-footer,.ed-hero-aside>span,.ed-card-meta,.ed-story-index,.ed-story-category,.expertise-grid article>span,.focus-num,.path-steps li>span{font-family:var(--font-sans);font-size:var(--t-caption);font-weight:400;letter-spacing:0;text-transform:none;color:var(--c-on-dark-3)}
 .focus-num,.path-steps li>span,.ed-story-index,.slide-tab small{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.focus-num,.path-steps li>span{color:var(--c-accent)!important}
 
 /* ---------- Actions ---------- */
 .button,.ed-primary{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 22px;border:1px solid var(--c-on-dark);border-radius:var(--pill);background:transparent;color:var(--c-on-dark);font-size:var(--t-body);font-weight:400;letter-spacing:-.01em;white-space:nowrap;transition:background-color var(--dur-2) ease,color var(--dur-2) ease,border-color var(--dur-2) ease,transform var(--dur-1) var(--ease-out)}
 .button:hover{transform:none}
 .button:active,.ed-primary:active{transform:scale(.97)}
-.button-primary,.button-light,.ed-primary,.feature-section .button-primary{background:var(--c-on-dark)!important;border-color:var(--c-on-dark);color:var(--c-black)!important}
+.button-light{background:var(--c-on-dark)!important;border-color:var(--c-on-dark);color:var(--c-black)!important}
+.button-primary,.ed-primary,.feature-section .button-primary{background:var(--c-cyan)!important;border-color:var(--c-cyan);color:var(--c-cyan-ink)!important;font-weight:600}
 .button span,.ed-primary span{color:inherit;padding:0;margin:0}
 .text-link,.official-link,.back-link,.ed-back,.ed-text-link,.slide-link,.related-link,.expertise-grid a,.ed-links a{color:var(--c-on-dark);font-size:var(--t-body);font-weight:400;text-decoration:underline;text-decoration-color:transparent;text-underline-offset:4px;transition:text-decoration-color var(--dur-2) ease}
 .text-link span,.slide-link span{color:inherit;padding-left:4px}
 @media (hover:hover) and (pointer:fine){
- .button-primary:hover,.button-light:hover,.ed-primary:hover,.feature-section .button-primary:hover{background:#fff!important;border-color:#fff}
+ .button-light:hover{background:#fff!important;border-color:#fff}
+ .button-primary:hover,.ed-primary:hover,.feature-section .button-primary:hover{background:var(--c-cyan-2)!important;border-color:var(--c-cyan-2)}
  :is(.text-link,.official-link,.back-link,.ed-back,.ed-text-link,.slide-link,.related-link,.expertise-grid a,.ed-links a):hover{text-decoration-color:currentColor}
 }
 .back-link,.ed-back{display:inline-flex;align-items:center;min-height:44px;margin-bottom:var(--s-4);font-size:var(--t-small);color:var(--c-on-dark-2)}
@@ -45,12 +48,12 @@ p{text-wrap:pretty}
 /* ---------- Light bands ---------- */
 :is(.page-home .feature-section,.page-home .expertise-section,.page-home .final-cta,.page-subpage:not(.page-product) .focus-section,.page-product .sub-hero,.page-subpage .sub-bottom,.page-research .ed-intro,.page-research .ed-cta,.page-news .ed-news-section){background:var(--c-light)!important;color:var(--c-on-light);border:0}
 :is(.page-home .feature-section,.page-home .expertise-section,.page-home .final-cta,.page-subpage:not(.page-product) .focus-section,.page-product .sub-hero,.page-subpage .sub-bottom,.page-research .ed-intro,.page-research .ed-cta,.page-news .ed-news-section){
- --c-on-dark:#1d1d1f;--c-on-dark-2:#6e6e73;--c-on-dark-3:#6e6e73;--c-tile:#fff;--c-tile-2:#fff;--c-line-dark:var(--c-line-light)}
+ --c-accent:var(--c-cyan-deep);--c-on-dark:#1d1d1f;--c-on-dark-2:#6e6e73;--c-on-dark-3:#6e6e73;--c-tile:#fff;--c-tile-2:#fff;--c-line-dark:var(--c-line-light)}
 :is(.page-home .feature-section,.page-home .expertise-section,.page-home .final-cta,.page-subpage:not(.page-product) .focus-section,.page-product .sub-hero,.page-subpage .sub-bottom,.page-research .ed-intro,.page-research .ed-cta,.page-news .ed-news-section) :is(h1,h2,h3,strong){color:var(--c-on-light)}
 :is(.page-home .feature-section,.page-home .expertise-section,.page-home .final-cta,.page-subpage:not(.page-product) .focus-section,.page-product .sub-hero,.page-subpage .sub-bottom,.page-research .ed-intro,.page-research .ed-cta,.page-news .ed-news-section) :is(h1 em,h2 em,h1 span,h2 span){color:var(--c-on-light-2)}
-:is(.page-home .feature-section,.page-home .expertise-section,.page-home .final-cta,.page-subpage:not(.page-product) .focus-section,.page-product .sub-hero,.page-subpage .sub-bottom,.page-research .ed-intro,.page-research .ed-cta,.page-news .ed-news-section) :is(.button-primary,.button-light,.ed-primary){background:var(--c-on-light)!important;border-color:var(--c-on-light);color:#fff!important}
+:is(.page-home .feature-section,.page-home .expertise-section,.page-home .final-cta,.page-subpage:not(.page-product) .focus-section,.page-product .sub-hero,.page-subpage .sub-bottom,.page-research .ed-intro,.page-research .ed-cta,.page-news .ed-news-section) .button-light{background:var(--c-on-light)!important;border-color:var(--c-on-light);color:#fff!important}
 :is(.page-home .feature-section,.page-home .expertise-section,.page-home .final-cta,.page-subpage:not(.page-product) .focus-section,.page-product .sub-hero,.page-subpage .sub-bottom,.page-research .ed-intro,.page-research .ed-cta,.page-news .ed-news-section) :focus-visible{outline-color:var(--c-cyan-deep)}
-@media (hover:hover) and (pointer:fine){:is(.page-home .feature-section,.page-home .expertise-section,.page-home .final-cta,.page-subpage:not(.page-product) .focus-section,.page-product .sub-hero,.page-subpage .sub-bottom,.page-research .ed-intro,.page-research .ed-cta,.page-news .ed-news-section) :is(.button-primary,.button-light,.ed-primary):hover{background:#000!important;border-color:#000}}
+@media (hover:hover) and (pointer:fine){:is(.page-home .feature-section,.page-home .expertise-section,.page-home .final-cta,.page-subpage:not(.page-product) .focus-section,.page-product .sub-hero,.page-subpage .sub-bottom,.page-research .ed-intro,.page-research .ed-cta,.page-news .ed-news-section) .button-light:hover{background:#000!important;border-color:#000}}
 
 /* Dark bands: pure black, no tinted gradients or grid textures. */
 :is(.hero,.audience-section,.portfolio-strip,.sub-hero,.focus-section,.path-section,.sub-bottom,.ed-hero,.ed-news-hero,.ed-section,.ed-cta,.capability-strip,.expertise-section,.final-cta,.feature-section,.ed-intro){background:var(--c-black)!important;border:0!important}
@@ -253,7 +256,7 @@ p{text-wrap:pretty}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{transition-duration:.01ms!important;animation:none!important}}
 
 /* Older stylesheets tint some labels teal; the system keeps them grey. */
-:is(.eyebrow,.ed-kicker){color:var(--c-on-dark-2)!important}
+:is(.eyebrow,.ed-kicker){color:var(--c-accent)!important}
 :is(h1,h2) em{color:var(--c-on-dark-3)!important}
 #slide-count{color:inherit!important;font-weight:400}
 /* Tile rows run wider than the reading column. */
