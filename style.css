@@ -282,6 +282,9 @@ html:not([data-story=on]) .routing-copy>p:first-of-type{grid-row:1/span 2}
  [data-story=on] .assembly-stage-meta{top:calc(var(--s-6) + 26px);left:auto;right:0;justify-content:flex-end}
  [data-story=on] .assembly-stage .detail-views{left:var(--s-6);bottom:var(--s-6)}
  [data-story=on] .assembly-stage .assembly-note{left:var(--s-6);bottom:calc(var(--s-6) + 56px)}
+ [data-story=on] .assembly-stage :is(.detail-views,.assembly-note,.assembly-stage-meta){transition:opacity var(--dur-3) ease,visibility 0s linear var(--dur-3)}
+ [data-story=on]:not([data-chapter=assembly]) .assembly-stage :is(.detail-views,.assembly-note,.assembly-stage-meta){opacity:0;visibility:hidden}
+ [data-story=on][data-chapter=assembly] .assembly-stage :is(.detail-views,.assembly-note,.assembly-stage-meta){transition-delay:0s}
  [data-story=on] #routing{max-width:none;padding-top:0}
  [data-story=on] .routing-copy{max-width:calc(var(--col) - var(--gutter));min-height:150svh;padding-top:12svh}
  [data-story=on] .routing-panel{max-width:calc(var(--max) - var(--gutter)*2);margin-inline:auto;margin-top:0}
@@ -347,11 +350,11 @@ html:not([data-story=on]) .routing-copy>p:first-of-type{grid-row:1/span 2}
  [data-story=on] .intro-grid{gap:var(--s-5);padding-bottom:var(--s-5)}
  [data-story=on] .assembly-section{pointer-events:none}
  [data-story=on] .assembly-wrapper{display:flex;flex-direction:column}
- [data-story=on] .assembly-stage{position:relative;height:calc(var(--stage-h) - var(--s-4));background:none;border:0;pointer-events:none}
+ [data-story=on] .assembly-stage{position:relative;height:auto;padding-top:var(--stage-h);background:none;border:0;pointer-events:none}
  [data-story=on] .assembly-stage .scene-fallback,[data-story=on] .assembly-stage-meta,[data-story=on] .assembly-note{display:none}
- [data-story=on] .assembly-stage .detail-views{left:0;right:0;bottom:calc(var(--s-3) + 52px);pointer-events:auto}
+ [data-story=on] .assembly-stage .detail-views{position:relative;left:auto;bottom:auto;padding-top:var(--s-5);pointer-events:auto;background:linear-gradient(to bottom,rgba(6,11,17,0),var(--c-ground) 20px)}
  [data-story=on] .assembly-stage .detail-views button{flex:1;padding:0 8px}
- [data-story=on] .assembly-copy{position:relative;pointer-events:auto;padding:var(--s-6) 0 var(--s-8);background:linear-gradient(to bottom,rgba(6,11,17,0),var(--c-ground) 32px)}
+ [data-story=on] .assembly-copy{position:relative;pointer-events:auto;padding:var(--s-6) 0 var(--s-8);background:var(--c-ground)}
  [data-story=on] #routing{padding-top:var(--stage-h);pointer-events:none}
  [data-story=on] .routing-copy{position:relative;pointer-events:auto;padding:var(--s-6) 0 120svh;background:linear-gradient(to bottom,rgba(6,11,17,0),var(--c-ground) 32px,var(--c-ground) calc(100% - 120svh),rgba(6,11,17,0) calc(100% - 120svh))}
  [data-story=on] .routing-panel{pointer-events:auto;margin-top:0}

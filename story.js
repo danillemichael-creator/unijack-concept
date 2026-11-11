@@ -123,7 +123,7 @@ function setView(view){
  currentView = view;
  document.querySelectorAll('[data-view]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view === view)));
  if (callout) callout.innerHTML = CALLOUTS[view];
- stage.dataset.view = view;
+ stage.dataset.stageView = view;
 }
 function stageRegion(){ return host.getBoundingClientRect(); }
 function layoutOverlay(){
@@ -189,6 +189,7 @@ function update(force = false){
   if (!force && p === progress && h === handoffT) return;
   progress = p; handoffT = h;
   setView(viewFor(p));
+  root.dataset.chapter = p > STORY.pull[0] + .2 && p < STORY.leave[0] + .02 ? 'assembly' : 'story';
   stage.style.setProperty('--fade', (1 - easeInOut(span(h, [0, .55]))).toFixed(3));
   stage.style.setProperty('--dim', span(p, STORY.dim).toFixed(3));
   root.dataset.handoff = h >= 1 ? 'done' : 'pending';
