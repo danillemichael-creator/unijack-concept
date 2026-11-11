@@ -82,8 +82,8 @@ export async function createStoryScene(host,{lite=false,instant=false,onFrame=()
  let keys={};
  function layoutKeys(){
   keys={
-   k0:fit(boxes.all,az0,el0,.7),k0b:fit(boxes.all,az0+yaw,el0-.03,.7),
-   k1:fit(boxes.exploded,az0+yaw+.16,el0+.07,.76),
+   k0:fit(boxes.all,az0,el0,.86),k0b:fit(boxes.all,az0+yaw,el0-.03,.86),
+   k1:fit(boxes.exploded,az0+yaw+.16,el0+.07,lite?.76:.84),
    k3:fit(boxes.base,0,THREE.MathUtils.degToRad(88.5),.9)
   };
  }
