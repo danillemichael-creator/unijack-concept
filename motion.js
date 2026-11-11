@@ -34,7 +34,8 @@ export function mercuryInsertionPose(amount,edgeX=-17.5,edgeY=.7){
 // cleanly when the visitor scrolls back up.
 export const STORY = {
  yaw:[0,.15],
- peri:[.15,.32], mercury:[.19,.36], components:[.26,.45], pull:[.15,.45],
+ // The explode reads as one movement: all parts start within a few percent.
+ peri:[.15,.39], mercury:[.165,.405], components:[.18,.42], pull:[.15,.45],
  hold:[.45,.55],
  leave:[.55,.66], settle:[.55,.65], topDown:[.56,.72],
  dim:[.70,.84], schematic:[.72,.82],

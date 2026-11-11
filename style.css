@@ -181,7 +181,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border:0;border-radiu
 .product-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(16px,2.4vw,32px);max-width:var(--max);margin:0 auto}
 .product-card{display:flex;flex-direction:column;align-items:center;min-width:0;text-align:center}
 .photo-window{position:relative;display:flex;align-items:center;justify-content:center;width:100%;aspect-ratio:4/3.4;margin-bottom:var(--s-6);border-radius:var(--radius-tile);background:var(--c-white);overflow:hidden}
-.photo-window img{width:100%;height:100%;object-fit:contain;padding:8%;mix-blend-mode:multiply;transition:transform 600ms var(--ease-out)}
+.photo-window img{width:100%;height:100%;object-fit:contain;padding:8%;mix-blend-mode:multiply;transition:transform 300ms var(--ease-out)}
 .photo-mercury img{height:86%;width:auto;padding:0}
 .photo-peri img{width:80%;height:auto;max-height:70%;padding:0}
 .product-card-body{display:flex;flex-direction:column;align-items:center;gap:var(--s-2);max-width:22rem}
@@ -269,83 +269,86 @@ html:not([data-story=on]) .beat-stats{margin-top:var(--s-9)}
 html:not([data-story=on]) .routing-section{padding-top:0}
 
 /* =====================================================================
-   Scroll story
+   Scroll story: one pinned stage, ~2.2 screens on desktop, ~1.5 on phones.
+   Sections are in-flow spacers that set each text window; the text itself
+   is fixed in the band above the board and follows scroll position.
    ===================================================================== */
 [data-story=on]{
- --band-top:calc(var(--local) + clamp(24px,4.5svh,56px));  /* where stage text sits */
- --canvas-top:clamp(300px,42svh,430px);                   /* below the text band */
- --foot:clamp(84px,11svh,104px)
+ --band-top:calc(var(--local) + clamp(16px,3svh,36px));
+ --w-proof:25svh;--w-platform:55svh;--w-assembly:60svh;--w-routing:45svh;--w-stats:35svh
 }
 [data-story=on] #product-stage{position:fixed;inset:var(--local) 0 0 0;z-index:0;pointer-events:none;opacity:var(--fade,1)}
 [data-story=on] #product-stage[data-visible=false]{visibility:hidden}
-[data-story=on] #product-stage .stage-canvas{top:var(--canvas-top);bottom:calc(var(--foot) - 24px);pointer-events:auto}
+[data-story=on] #product-stage .stage-canvas{inset:0;pointer-events:auto}
+/* Nothing shows before the board enters; the reveal sets --intro. */
 [data-story=on] .stage-webgl{opacity:0}
-[data-story=on] .ready .stage-webgl{opacity:calc(1 - var(--dim,0)*.85)}
-[data-story=on] #product-stage .scene-fallback{top:var(--canvas-top);bottom:var(--foot);height:auto;left:50%;width:min(calc(100% - var(--gutter)*2),960px);transform:translateX(-50%)}
-[data-story=on] .scene-controls{left:50%;bottom:calc(var(--s-5) + 14px);transform:translateX(-50%);pointer-events:auto;opacity:calc(1 - var(--dim,0))}
-[data-story=on] .scene-footnote{opacity:calc(1 - var(--dim,0))}
-[data-story=on] .scene-footnote{left:var(--gutter);right:var(--gutter);bottom:6px}
-[data-story=on] .stage-label{display:block}
-[data-story=on] :is(.scene-controls,.scene-footnote){transition:opacity var(--dur-3) ease,visibility 0s linear var(--dur-3)}
-[data-story=on][data-chapter=assembly] :is(.scene-controls,.scene-footnote){opacity:0;visibility:hidden}
-[data-story=on]:not([data-chapter=assembly]) :is(.scene-controls,.scene-footnote){transition-delay:0s}
+[data-story=on] .ready .stage-webgl{opacity:calc(var(--intro,0) * (1 - var(--dim,0)*.85));transition:none}
+[data-story=on] #product-stage .scene-fallback{display:none}
+[data-story=on] #product-stage.no-webgl .scene-fallback{display:block;top:30%;bottom:96px;height:auto;left:50%;width:min(calc(100% - var(--gutter)*2),1100px);transform:translateX(-50%)}
+[data-story=on] .scene-controls{left:50%;bottom:30px;transform:translateX(-50%);pointer-events:auto;opacity:calc(var(--intro,1) * (1 - var(--dim,0)))}
+[data-story=on] .scene-footnote{left:var(--gutter);right:var(--gutter);bottom:6px;opacity:calc(1 - var(--dim,0))}
+[data-story=on] :is(.scene-controls,.scene-footnote){transition:visibility 0s linear var(--dur-3)}
+[data-story=on][data-chapter=assembly] :is(.scene-controls,.scene-footnote){opacity:0;visibility:hidden;transition:opacity var(--dur-2) ease,visibility 0s linear var(--dur-2)}
 [data-story=on] .story-schematic{position:fixed}
 
-/* Content sections scroll over the pinned stage; only their text takes input. */
 [data-story=on] :is(main>.hero,.beat-proof,#platform,.assembly-section,#routing){position:relative;z-index:1;pointer-events:none}
-[data-story=on] :is(.hero-copy,.hero-bottom,.story-text,.assembly-copy)>*{pointer-events:auto}
+[data-story=on] :is(.hero-copy,.hero-bottom)>*{pointer-events:auto}
 [data-story=on] .hero{min-height:calc(100svh - var(--header) - var(--local))}
-[data-story=on] .hero-copy{padding-top:clamp(24px,4.5svh,56px)}
-[data-story=on] .hero-bottom{position:absolute;left:0;right:0;bottom:0;height:var(--foot);pointer-events:none}
-[data-story=on] .hero-bottom>span{position:absolute;left:var(--gutter);bottom:50px;max-width:16em;text-align:left;pointer-events:auto}
-[data-story=on] .hero-bottom>a{position:absolute;right:var(--gutter);bottom:38px;pointer-events:auto}
+[data-story=on] .hero-copy{padding-top:clamp(16px,3svh,36px)}
+[data-story=on] .hero-bottom{position:absolute;left:0;right:0;bottom:0;height:96px;pointer-events:none}
+[data-story=on] .hero-bottom>span{position:absolute;left:var(--gutter);bottom:42px;max-width:16em;text-align:left;pointer-events:auto}
+[data-story=on] .hero-bottom>a{position:absolute;right:var(--gutter);bottom:30px;pointer-events:auto}
 
-/* Each stage's text pins in the band above the board; story.js fades it. */
-[data-story=on] .story-beat:not(.hero){position:relative}
-[data-story=on] .story-text{position:sticky;top:var(--band-top)}
-[data-story=on] .beat-proof{height:70svh}
-/* Beats overlap a little so the next text arrives as the last one leaves. */
-[data-story=on] .beat-proof{margin-top:-24svh}
-[data-story=on] :is(.assembly-section,.beat-stats){margin-top:-15svh}
-[data-story=on] #routing{margin-top:-62svh}
-[data-story=on] #platform{max-width:none;min-height:140svh;padding:0;text-align:center}
-[data-story=on] #platform .story-text{max-width:var(--content);margin:0 auto;padding:0 var(--gutter)}
-[data-story=on] #platform h2,[data-story=on] .beat-routing h2{font-size:clamp(2.25rem,1.2rem + 3vw,4rem)}
-[data-story=on] .assembly-section{min-height:230svh}
-[data-story=on] .assembly-wrapper{display:grid;min-height:230svh}
-[data-story=on] .assembly-wrapper>*{grid-area:1/1}
-[data-story=on] .assembly-copy{position:sticky;top:var(--band-top);align-self:start;height:calc(100svh - var(--band-top));padding:0 var(--gutter)}
+/* Spacer heights set the windows. */
+[data-story=on] .beat-proof{height:var(--w-proof);margin-top:18svh}
+[data-story=on] .proof-strip.story-text>*{max-width:none;margin-inline:0}
+[data-story=on] #platform{max-width:none;height:var(--w-platform);padding:0}
+[data-story=on] .assembly-section{height:var(--w-assembly)}
+[data-story=on] #routing{padding:0}
+[data-story=on] .beat-routing{height:var(--w-routing)}
+[data-story=on] .beat-stats{height:var(--w-stats)}
+/* Fixed text in the band. */
+[data-story=on] :is(.story-text,.assembly-copy){position:fixed;left:0;right:0;top:var(--band-top);z-index:2;max-width:none;margin:0;padding:0 var(--gutter);text-align:center;opacity:0;pointer-events:none;will-change:opacity,transform}
+[data-story=on] .story-text>*{max-width:var(--content);margin-inline:auto}
+[data-story=on] :is(.story-text,.assembly-copy)[data-live=true]>*{pointer-events:auto}
+[data-story=on] :is(#platform,.beat-routing) h2{font-size:clamp(2rem,1rem + 2.4vw,3rem)}
+[data-story=on] :is(#platform,.beat-routing) p{max-width:40rem;margin-inline:auto;font-size:var(--t-body);line-height:1.47}
+[data-story=on] .intro-grid{gap:var(--s-3)}
+[data-story=on] .beat-routing p{margin-top:var(--s-3)}
+[data-story=on] .routing-stats strong{font-size:clamp(4rem,1.5rem + 4.6vw,6.5rem)}
+[data-story=on] .routing-stats span{margin-top:var(--s-2);font-size:var(--t-body)}
+[data-story=on] .beat-stats .source-note{margin-top:var(--s-4)}
+[data-story=on] .assembly-copy{bottom:0}
 [data-story=on] .assembly-copy .eyebrow{margin-bottom:0}
-[data-story=on] .assembly-copy .part-text p{max-width:34rem;margin-inline:auto}
-[data-story=on] .assembly-stage{position:sticky;top:var(--local);align-self:start;height:calc(100svh - var(--local));background:none;border:0;overflow:visible;pointer-events:none}
+[data-story=on] .assembly-copy .part-tabs{margin:var(--s-2) auto var(--s-3)}
+[data-story=on] .assembly-copy .part-text h3{font-size:clamp(1.5rem,1rem + 1.4vw,2.25rem)}
+[data-story=on] .assembly-copy .part-text p{max-width:34rem;margin:var(--s-2) auto 0}
+[data-story=on] .assembly-wrapper{position:static}
+[data-story=on] .assembly-stage{position:absolute;inset:0;height:auto;background:none;border:0;overflow:visible;pointer-events:none}
 [data-story=on] .assembly-stage .scene-fallback{display:none}
 /* Assembly controls share the foot: views left of centre, insertion right. */
-[data-story=on] .assembly-stage .detail-views{right:calc(50% + 8px);bottom:calc(var(--s-5) + 14px);pointer-events:auto}
-[data-story=on] .assembly-copy .insertion-control{position:absolute;left:calc(50% + 8px);bottom:calc(var(--s-5) + 14px)}
-[data-story=on] .assembly-stage .assembly-note{right:calc(50% + 8px);bottom:6px;text-align:right}
+[data-story=on] .assembly-stage .detail-views{position:fixed;right:calc(50% + 8px);bottom:30px;pointer-events:auto}
+[data-story=on] .assembly-copy .insertion-control{position:absolute;left:calc(50% + 8px);bottom:30px}
+[data-story=on] .assembly-stage .assembly-note{position:fixed;right:calc(50% + 8px);bottom:6px;text-align:right}
 [data-story=on] .assembly-copy>.source-note{position:absolute;left:calc(50% + 8px);right:var(--gutter);bottom:6px;margin:0;text-align:left}
-[data-story=on] :is(.assembly-stage .detail-views,.assembly-stage .assembly-note,.insertion-control,.assembly-copy>.source-note){transition:opacity var(--dur-3) ease,visibility 0s linear var(--dur-3)}
+[data-story=on] :is(.assembly-stage .detail-views,.assembly-stage .assembly-note,.insertion-control,.assembly-copy>.source-note){transition:opacity var(--dur-2) ease,visibility 0s linear var(--dur-2)}
 [data-story=on]:not([data-chapter=assembly]) :is(.assembly-stage .detail-views,.assembly-stage .assembly-note,.insertion-control,.assembly-copy>.source-note){opacity:0;visibility:hidden}
 [data-story=on][data-chapter=assembly] :is(.assembly-stage .detail-views,.assembly-stage .assembly-note,.insertion-control,.assembly-copy>.source-note){transition-delay:0s}
-
-[data-story=on] #routing{padding:0}
-[data-story=on] .beat-routing{min-height:130svh}
-[data-story=on] .beat-stats{min-height:120svh}
-[data-story=on] .routing-copy .story-text{max-width:var(--content);margin:0 auto;padding:0 var(--gutter)}
-[data-story=on] .routing-stats strong{font-size:clamp(4.5rem,1.5rem + 6.4vw,8.5rem)}
 [data-story=on] .routing-panel{margin:0 auto var(--section);width:calc(100% - var(--gutter)*2);pointer-events:auto}
 [data-story=on]:not([data-handoff=done])[data-schematic=ready] #routing .approved-routing-graphic{opacity:var(--handoff,0)}
 
-/* Wide desktop: the hero headline runs on one line. */
-@media (min-width:1200px){.hero h1{font-size:min(var(--t-hero),5.4vw)}.hero h1 br{display:none}.hero h1 span{margin-left:.22em}}
-
+/* Wide desktop: the hero headline and the story headlines run on one line. */
+@media (min-width:1200px){
+ .hero h1{font-size:min(var(--t-hero),5.4vw)}.hero h1 br{display:none}.hero h1 span{margin-left:.22em}
+ [data-story=on] :is(#platform,.beat-routing) h2 br{display:none}
+ [data-story=on] :is(#platform,.beat-routing) h2 span{margin-left:.22em}
+}
 /* Assembly foot stacks below 1200px: views above, insertion below. */
 @media (max-width:1199px){
- [data-story=on] .assembly-copy .insertion-control{left:0;right:0;margin-inline:auto;bottom:calc(var(--s-5) + 10px);width:max-content;max-width:calc(100vw - var(--gutter)*2)}
- [data-story=on] .assembly-stage .detail-views{right:0;left:0;margin-inline:auto;width:max-content;max-width:calc(100vw - var(--gutter)*2);flex-wrap:nowrap;bottom:calc(var(--s-5) + 70px)}
+ [data-story=on] .assembly-copy .insertion-control{left:0;right:0;margin-inline:auto;bottom:26px;width:max-content;max-width:calc(100vw - var(--gutter)*2)}
+ [data-story=on] .assembly-stage .detail-views{right:0;left:0;margin-inline:auto;width:max-content;max-width:calc(100vw - var(--gutter)*2);flex-wrap:nowrap;bottom:86px}
  [data-story=on] .assembly-stage .assembly-note{right:auto;left:var(--gutter);bottom:6px;text-align:left}
  [data-story=on] .assembly-copy>.source-note{left:auto;right:var(--gutter);max-width:46%;text-align:right}
- [data-story=on]{--foot:clamp(140px,18svh,160px)}
 }
 
 /* =====================================================================
@@ -367,27 +370,29 @@ html:not([data-story=on]) .routing-section{padding-top:0}
  .hero-actions{gap:var(--s-1) var(--s-4)}
  .hero .button{padding:0 18px}
 
- [data-story=on]{--canvas-top:clamp(330px,52svh,470px);--foot:150px}
+ [data-story=on]{--w-proof:12svh;--w-platform:33svh;--w-assembly:45svh;--w-routing:30svh;--w-stats:25svh}
  [data-story=on] .hero-bottom{position:static;height:auto;margin-top:var(--s-2);flex-direction:column;gap:0}
  [data-story=on] .hero-bottom>a{min-height:32px}
  [data-story=on] .hero-bottom>:is(span,a){position:static;font-size:var(--t-caption)}
  [data-story=on] .hero-bottom>span{max-width:none;text-align:center}
  [data-story=on] .scene-footnote{bottom:4px}
  [data-story=on] .scene-controls{bottom:44px}
+ [data-story=on] :is(#platform,.beat-routing) p{font-size:15px;line-height:1.45}
  .proof-strip{gap:2px 16px}
  .proof-strip span{white-space:nowrap}
  .proof-strip span+span::before{content:none}
  .scene-footnote{flex-direction:column}
  .scene-footnote>span+span::before{content:none}
- [data-story=on] .routing-stats strong{font-size:clamp(4rem,1rem + 12vw,5.5rem)}
+ [data-story=on] .routing-stats strong{font-size:clamp(3.5rem,1rem + 10vw,4.5rem)}
  [data-story=on] .routing-stats{gap:var(--s-5)}
  [data-story=on] .routing-stats span{font-size:var(--t-body);margin-top:var(--s-1)}
  [data-story=on] .assembly-copy .part-tabs{margin-bottom:var(--s-4)}
  [data-story=on] .assembly-copy .part-text p{font-size:15px;line-height:1.45}
  [data-story=on] .assembly-stage .detail-views{bottom:146px}
- /* The assembly chapter needs a taller foot: the board steps up and in. */
- [data-story=on] #product-stage .stage-canvas{transition:transform 500ms var(--ease-out)}
- [data-story=on][data-chapter=assembly] #product-stage .stage-canvas{transform:translateY(-52px) scale(.9)}
+ [data-story=on] .routing-stats{flex-direction:row;justify-content:center;align-items:flex-end;gap:var(--s-6)}
+ /* The assembly chapter needs a taller foot: the board steps up. */
+ [data-story=on] #product-stage .stage-canvas{transition:transform 260ms var(--ease-out)}
+ [data-story=on][data-chapter=assembly] #product-stage .stage-canvas{transform:translateY(-48px)}
 }
 @media (max-width:480px){
  .segmented button{padding:0 12px;font-size:13px}

@@ -86,7 +86,11 @@ function measure(){
  if (!storyOn) return;
  const yPlatform = docTop(sections.platform), yAsm = docTop(sections.assembly);
  const yAsmEnd = yAsm + sections.assembly.offsetHeight, yRoute = docTop(sections.routing), yPanel = docTop(sections.panel);
- const raw = [[0,0],[yPlatform - vh*.4,STORY.yaw[1]],[yAsm - vh*.05,STORY.pull[1]],[yAsmEnd - vh*.95,STORY.hold[1]],[yRoute + vh*.05,STORY.topDown[1]],[yPanel - vh*.9,1]];
+ // Knots sit where section edges cross the story line (near the bottom of the
+ // viewport), so the pinned story spans ~2.2 screens on desktop and ~1.5 on
+ // phones and finishes just as the explorer panel enters.
+ const mid = y => y - vh * LINE;
+ const raw = [[0,0],[mid(yPlatform),STORY.yaw[1]],[mid(yAsm),STORY.pull[1]],[mid(yAsmEnd),STORY.hold[1]],[mid(yRoute) + (yPanel - yRoute) * .3,STORY.topDown[1]],[mid(yPanel),1]];
  knots = []; let prev = -1;
  for (const [y,p] of raw) { const value = Math.max(prev + 1, y); knots.push([value,p]); prev = value; }
  const graphicTop = docTop(sections.graphic);
@@ -111,42 +115,60 @@ function scrollForProgress(p){
 // ---------- Stage text: each beat's copy pins above the board and fades ----------
 // A beat's text fades in over the last stretch of its travel into the band and
 // fades out as its beat runs out. The hero only fades out.
-const beats = [...document.querySelectorAll('.story-beat')].map(beat => ({
- beat,
- els: beat.matches('.hero') ? [...beat.querySelectorAll(':scope > .hero-copy, :scope > .hero-bottom')]
-  : beat.matches('.assembly-section') ? [beat.querySelector('.assembly-copy')]
-  : [beat.querySelector('.story-text')],
- hero: beat.matches('.hero')
-}));
+// Story text is fixed in the band above the board. Each block shows while its
+// section (an in-flow spacer) spans the middle of the viewport; opacity and a
+// small rise follow the scroll position directly — nothing is time-based.
+const windows = [
+ ['.beat-proof', '.beat-proof .story-text'],
+ ['#platform', '#platform .story-text'],
+ ['.assembly-section', '.assembly-section .assembly-copy'],
+ ['.beat-routing', '.beat-routing .story-text'],
+ ['.beat-stats', '.beat-stats .story-text']
+].map(([s, e]) => ({section: document.querySelector(s), el: document.querySelector(e), top: 0, bottom: 0, o: -1}));
+const heroText = [...document.querySelectorAll('.hero > .hero-copy, .hero > .hero-bottom')];
+const LINE = .95; // the story line, as a share of the viewport height
 const smooth = t => t * t * (3 - 2 * t);
-function fadeBeats(){
- const ramp = vh * .2;
- for (const {beat, els, hero} of beats) {
-  const box = beat.getBoundingClientRect();
-  for (const el of els) {
-   if (!el) continue;
-   let o;
-   if (hero) o = 1 - smooth(Math.min(1, Math.max(0, scrollY / (vh * .32))));
-   else {
-    const r = el.getBoundingClientRect(), stick = parseFloat(getComputedStyle(el).top) || 0;
-    const into = 1 - Math.min(1, Math.max(0, (r.top - stick) / ramp));
-    const left = Math.min(1, Math.max(0, (box.bottom - r.bottom) / ramp));
-    o = smooth(Math.min(into, left));
-   }
-   el.style.opacity = o.toFixed(3);
-   el.style.pointerEvents = o > .5 ? '' : 'none';
-  }
- }
+const clamp01 = v => Math.min(1, Math.max(0, v));
+function measureWindows(){
+ for (const w of windows) { w.top = docTop(w.section); w.bottom = w.top + w.section.offsetHeight; }
 }
-// Keyboard focus moving into faded text brings that beat into view first.
+function fadeBeats(){
+ const centre = scrollY + vh * LINE;
+ let assembly = false;
+ for (const w of windows) {
+  const ramp = Math.min(vh * .08, (w.bottom - w.top) * .3);
+  const o = smooth(clamp01((centre - w.top) / ramp)) * smooth(clamp01((w.bottom - centre) / ramp));
+  if (w.el === windows[2].el && o > .5) assembly = true;
+  if (Math.abs(o - w.o) < .002) continue;
+  w.o = o;
+  const rising = centre < (w.top + w.bottom) / 2;
+  w.el.style.opacity = o.toFixed(3);
+  w.el.style.transform = o >= .999 ? '' : `translate3d(0,${((1 - o) * (rising ? 14 : -10)).toFixed(1)}px,0)`;
+  w.el.dataset.live = String(o > .5);
+ }
+ root.dataset.chapter = assembly ? 'assembly' : 'story';
+ const h = 1 - smooth(clamp01(scrollY / (vh * .16)));
+ heroText.forEach(el => { el.style.opacity = h.toFixed(3); el.style.pointerEvents = h > .5 ? '' : 'none'; });
+}
+// Keyboard focus moving into faded story text brings its section into view first.
 function revealOnFocus(event){
- const entry = beats.find(b => b.els.some(el => el && el.contains(event.target)));
- if (!entry || entry.hero) return;
- const el = entry.els.find(e => e && e.contains(event.target));
- if (parseFloat(el.style.opacity || '1') > .9) return;
- const stick = parseFloat(getComputedStyle(el).top) || 0;
- const top = docTop(entry.beat) + Math.max(0, (entry.beat.offsetHeight - el.offsetHeight) * .45) - stick;
- scrollTo({top, behavior: 'instant'});
+ const w = windows.find(w => w.el.contains(event.target));
+ if (!w || w.o > .9) return;
+ scrollTo({top: (w.top + w.bottom) / 2 - vh * LINE, behavior: 'instant'});
+}
+// The scene frames the board in the region below the tallest story text.
+function frameScene(){
+ if (!scene || !storyOn) return;
+ const stageTop = stage.getBoundingClientRect().top;
+ let band = 0;
+ for (const w of windows) {
+  const block = w.el.matches('.assembly-copy') ? w.el.querySelector('.part-text') : w.el;
+  band = Math.max(band, block.getBoundingClientRect().bottom - stageTop);
+ }
+ // At the top of the page the board sits below the (taller) hero copy.
+ const heroEnd = document.querySelector(compact.matches ? '.hero-bottom' : '.hero-actions');
+ const heroBottom = heroEnd.getBoundingClientRect().bottom + scrollY - stageTop; // position at scroll 0
+ scene.setFrame(Math.round(band + (compact.matches ? 12 : 20)), compact.matches ? 120 : 24, Math.round(heroBottom + (compact.matches ? 8 : 24)));
 }
 
 // ---------- Render the non-3D parts of the stage ----------
@@ -223,7 +245,6 @@ function update(force = false){
   if (!force && p === progress && h === handoffT) { fadeBeats(); return; }
   progress = p; handoffT = h;
   setView(viewFor(p));
-  root.dataset.chapter = p > STORY.pull[0] + .2 && p < STORY.leave[0] + .02 ? 'assembly' : 'story';
   stage.style.setProperty('--fade', (1 - easeInOut(span(h, [0, .55]))).toFixed(3));
   stage.style.setProperty('--dim', span(p, STORY.dim).toFixed(3));
   root.dataset.handoff = h >= 1 ? 'done' : 'pending';
@@ -249,9 +270,10 @@ function loadScene(){
    scene = await createStoryScene(host, {
     lite: storyOn && compact.matches,
     instant: !storyOn || reduced.matches,
-    onFrame: frame => { lastFrame = frame; placeLabels(frame); }
+    onFrame: frame => { lastFrame = frame; placeLabels(frame); stage.style.setProperty('--intro', frame.intro.toFixed(3)); }
    });
    stage.dataset.webgl = 'ready'; stage.classList.add('ready');
+   frameScene();
    root.dataset.scene = 'ready';
    return scene;
   } catch (error) {
@@ -266,10 +288,10 @@ function loadScene(){
 
 function init(){
  if (storyOn) document.body.append(overlay); else stage.append(overlay);
- measure();
+ measure(); measureWindows();
  addEventListener('scroll', requestUpdate, {passive: true});
  if (storyOn) document.addEventListener('focusin', revealOnFocus);
- const relayout = () => { measure(); layoutOverlay(); update(true); };
+ const relayout = () => { measure(); measureWindows(); frameScene(); layoutOverlay(); update(true); };
  addEventListener('resize', relayout);
  new ResizeObserver(relayout).observe(document.body);
  document.fonts?.ready.then(relayout);
@@ -277,9 +299,9 @@ function init(){
  loadSchematic().then(() => { layoutOverlay(); update(true); });
  update(true);
  // Load three.js after first paint, when the browser is idle.
- const start = () => (window.requestIdleCallback || (fn => setTimeout(fn, 200)))(() => loadScene().then(s => { if (s) { layoutOverlay(); update(true); } }), {timeout: 1500});
  if (root.dataset.saveData === 'on') return;
- if (document.readyState === 'complete') start(); else addEventListener('load', start, {once: true});
+ // The board is the hero: start loading right after first paint.
+ requestAnimationFrame(() => setTimeout(() => loadScene().then(s => { if (s) { layoutOverlay(); update(true); } }), 0));
 }
 
 export const story = {
@@ -298,10 +320,10 @@ export const story = {
   }
   staticView = view; setViewStatic(view);
  },
- inAssemblyRange(p = progress){ return p > STORY.pull[0] + .2 && p < STORY.leave[0] + .02; },
+ inAssemblyRange(p = progress){ return p > STORY.pull[1] - .03 && p < STORY.hold[1] + .03; },
  scrollFor(p){ return scrollForProgress(p); },
  measure,
- relayout(){ measure(); layoutOverlay(); update(true); }
+ relayout(){ measure(); measureWindows(); frameScene(); layoutOverlay(); update(true); }
 };
 function setViewStatic(view){
  currentView = '';
