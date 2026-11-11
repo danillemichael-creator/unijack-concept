@@ -68,7 +68,7 @@ main{position:relative}
 .stage-canvas.has-snapshot .stage-webgl{opacity:0}
 .scene-fallback{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;transition:opacity var(--dur-3) ease;border-radius:var(--radius)}
 .product-stage.ready .scene-fallback,.assembly-stage.ready .scene-fallback{opacity:0;pointer-events:none}
-.stage-floor{position:absolute;left:8%;right:4%;bottom:12%;height:30%;pointer-events:none;background:radial-gradient(50% 50% at 50% 50%,rgba(22,52,72,.55),transparent 72%)}
+.stage-floor{display:none}
 .stage-heading{position:absolute;top:var(--s-5);right:var(--s-5);z-index:4;display:flex;gap:var(--s-4);align-items:baseline;pointer-events:none;color:var(--c-ink-3);font:500 var(--text-xs)/1.4 var(--font-sans);font-stretch:112%;letter-spacing:.07em}
 .stage-heading>span:first-child{color:var(--c-ink);font-weight:650}
 .stage-callout{position:absolute;z-index:4;display:flex;align-items:flex-start;gap:12px;pointer-events:none;color:var(--c-ink);font-size:var(--text-sm);font-weight:560;line-height:1.4}
@@ -229,14 +229,14 @@ input[type=range]::-moz-range-thumb{width:12px;height:12px;border-radius:50%;bac
    ===================================================================== */
 html:not([data-story=on]) .hero{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:var(--s-6);align-items:center;min-height:min(820px,calc(100svh - var(--header)));padding-block:var(--s-8) var(--s-9)}
 html:not([data-story=on]) .hero-bottom{position:absolute;left:var(--gutter);right:var(--gutter);bottom:var(--s-5)}
-html:not([data-story=on]) #product-stage{height:clamp(420px,46vw,640px);border-radius:var(--radius-lg);background:radial-gradient(70% 60% at 50% 55%,#10263a,transparent 75%)}
+html:not([data-story=on]) #product-stage{height:clamp(420px,46vw,640px);border-radius:var(--radius-lg);background:var(--c-ground-2)}
 html:not([data-story=on]) .stage-callout{top:22%;left:var(--s-5)}
 html:not([data-story=on]) .scene-controls{right:var(--s-4);bottom:var(--s-4)}
 html:not([data-story=on]) .scene-footnote{left:var(--s-5);bottom:calc(var(--s-4) + 56px);right:var(--s-5)}
 html:not([data-story=on]) #platform{padding-block:var(--s-9)}
 html:not([data-story=on]) .intro-grid{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);align-items:end}
 html:not([data-story=on]) .assembly-wrapper{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:var(--s-8);align-items:center;padding-block:var(--s-6) var(--s-9)}
-html:not([data-story=on]) .assembly-stage{position:relative;height:clamp(380px,38vw,560px);background:radial-gradient(70% 60% at 50% 55%,#10263a,var(--c-ground-2) 80%);border:1px solid var(--c-line)}
+html:not([data-story=on]) .assembly-stage{position:relative;height:clamp(380px,38vw,560px);background:var(--c-ground-2);border:1px solid var(--c-line)}
 html:not([data-story=on]) .detail-views{left:var(--s-4);bottom:var(--s-4)}
 html:not([data-story=on]) .assembly-note{right:var(--s-5);bottom:calc(var(--s-4) + 12px)}
 html:not([data-story=on]) .routing-section{padding-top:var(--s-9)}
@@ -251,7 +251,7 @@ html:not([data-story=on]) .routing-copy>p:first-of-type{grid-row:1/span 2}
    ===================================================================== */
 @media (min-width:960px){
  [data-story=on]{--col:min(38vw,600px)}
- [data-story=on] #product-stage{position:fixed;inset:var(--header) 0 0 0;z-index:0;pointer-events:none;opacity:var(--fade,1);background:radial-gradient(48% 52% at calc(var(--col) + (100% - var(--col))/2) 56%,rgba(20,50,72,.6),transparent 72%)}
+ [data-story=on] #product-stage{position:fixed;inset:var(--header) 0 0 0;z-index:0;pointer-events:none;opacity:var(--fade,1)}
  [data-story=on] #product-stage[data-visible=false]{visibility:hidden}
  [data-story=on] .stage-canvas{left:var(--col);pointer-events:auto}
  [data-story=on] .stage-webgl{opacity:0}
@@ -322,7 +322,7 @@ html:not([data-story=on]) .routing-copy>p:first-of-type{grid-row:1/span 2}
 
  /* Phone story: the board pins to the top half; copy slides over it. */
  [data-story=on]{--stage-h:52svh}
- [data-story=on] #product-stage{position:fixed;left:0;right:0;top:var(--header);height:var(--stage-h);z-index:0;opacity:var(--fade,1);background:radial-gradient(60% 55% at 50% 55%,rgba(20,50,72,.6),transparent 75%)}
+ [data-story=on] #product-stage{position:fixed;left:0;right:0;top:var(--header);height:var(--stage-h);z-index:0;opacity:var(--fade,1)}
  [data-story=on] #product-stage[data-visible=false]{visibility:hidden}
  [data-story=on] .stage-webgl{opacity:0}
  [data-story=on] .ready .stage-webgl{opacity:calc(1 - var(--dim,0)*.85)}

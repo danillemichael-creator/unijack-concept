@@ -108,3 +108,8 @@ p{text-wrap:pretty}
 /* Two-tone headings as on the UniJack page: second line recedes, cyan stays a signal. */
 .hero h1 span,.ed-hero h1 span,h2 span{color:var(--c-ink-3)}
 :is(.tb-section--product,.tb-section--support) h1 span{color:var(--c-paper-ink-2)}
+
+/* 12px floor for functional text (hero meta, carousel tabs and tags). */
+.hero-meta span{font-size:var(--text-xs)!important;letter-spacing:.07em}
+.slide-tab{font-size:var(--text-sm)!important}
+.slide-tags span{font-size:var(--text-xs)!important;padding:5px 9px;border-radius:4px;font-family:var(--font-mono);font-stretch:87.5%;letter-spacing:0}
