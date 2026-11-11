@@ -18,9 +18,9 @@ const sections = {
 };
 const callout = document.querySelector('#callout-label');
 const CALLOUTS = {
- assembled:'UniJack ecosystem<span>Platform · controller · peripherals</span>',
- exploded:'One connected ecosystem<span>Platform · controller · peripherals</span>',
- routing:'ERAU routing fabric<span>Illustrative signal paths</span>'
+ assembled:'UniJack ecosystem<span>PLATFORM · CONTROLLER · PERIPHERALS</span>',
+ exploded:'One connected ecosystem<span>PLATFORM · CONTROLLER · PERIPHERALS</span>',
+ routing:'ERAU routing fabric<span>ILLUSTRATIVE SIGNAL PATHS</span>'
 };
 const VIEW_PROGRESS = {assembled:0, exploded:.5, routing:1};
 
@@ -32,13 +32,8 @@ const listeners = new Set();
 const host = document.createElement('div');
 host.className = 'stage-canvas';
 host.setAttribute('aria-hidden', 'true');
-const labels = ['UniJack', 'Mercury', 'PeriBoard'].map(name => {
- const el = document.createElement('span');
- el.className = 'stage-label';
- el.textContent = name;
- host.append(el);
- return el;
-});
+// No leader labels: the page adds no text of its own to the stage.
+const labels = [];
 stage.prepend(host);
 
 // ---------- Schematic overlay (assets/erau-routing-approved.svg) ----------
@@ -213,6 +208,7 @@ function drawSchematic(p, h){
 }
 function placeLabels(frame){
  frame.labels.forEach((l, i) => {
+  if (!labels[i]) return;
   labels[i].style.transform = `translate3d(${l.x.toFixed(1)}px,${l.y.toFixed(1)}px,0)`;
   labels[i].style.opacity = l.o.toFixed(3);
  });
