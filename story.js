@@ -158,8 +158,7 @@ function revealOnFocus(event){
  scrollTo({top: (w.top + w.bottom) / 2 - vh * LINE, behavior: 'instant'});
 }
 // The scene frames the board in the region below the tallest story text.
-function frameScene(){
- if (!scene || !storyOn) return;
+function computeFrame(){
  const stageTop = stage.getBoundingClientRect().top;
  let band = 0;
  for (const w of windows) {
@@ -169,7 +168,29 @@ function frameScene(){
  // At the top of the page the board sits below the (taller) hero copy.
  const heroEnd = document.querySelector(compact.matches ? '.hero-bottom' : '.hero-actions');
  const heroBottom = heroEnd.getBoundingClientRect().bottom + scrollY - stageTop; // position at scroll 0
- scene.setFrame(Math.round(band + (compact.matches ? 12 : 20)), compact.matches ? 120 : 24, Math.round(heroBottom + (compact.matches ? 8 : 24)));
+ return {top: Math.round(band + (compact.matches ? 12 : 20)), bottom: compact.matches ? 120 : 24, hero: Math.round(heroBottom + (compact.matches ? 8 : 24))};
+}
+function frameScene(){
+ if (!storyOn) return;
+ const f = computeFrame();
+ placeGlow(f);
+ scene?.setFrame(f.top, f.bottom, f.hero);
+}
+// Loading glow (and the still image, if it is needed) sit where the board
+// will land on the first screen, using the same framing as the scene.
+function placeGlow(f){
+ const W = stage.clientWidth, H = stage.clientHeight, region = Math.max(H * .3, H - f.top - f.bottom);
+ const lowered = f.hero > f.top;
+ const y = f.top + region / 2 + (lowered ? (f.hero - f.top) * .62 : 0);
+ const w = (compact.matches ? W * .94 : Math.min(W * .8, 1200)) / (lowered ? 1.18 : 1);
+ stage.style.setProperty('--glow-y', `${Math.round(y)}px`);
+ stage.style.setProperty('--glow-w', `${Math.round(w)}px`);
+ // The still photo fits between the hero copy and the stage controls.
+ const room = Math.max(120, H - f.hero - (compact.matches ? 104 : 92));
+ const stillH = Math.min(w / 1.78, room);
+ stage.style.setProperty('--still-top', `${Math.round(f.hero + (room - stillH) / 2)}px`);
+ stage.style.setProperty('--still-h', `${Math.round(stillH)}px`);
+ stage.style.setProperty('--still-w', `${Math.round(Math.min(w, stillH * 1.78))}px`);
 }
 
 // ---------- Render the non-3D parts of the stage ----------
@@ -273,24 +294,65 @@ function update(force = false){
 function requestUpdate(){ if (!ticking) { ticking = true; requestAnimationFrame(() => update()); } }
 
 // ---------- Scene loading ----------
+// If the board is not ready about 4s after the hero text first paints, the
+// glow gives way to the still photograph for the rest of this visit.
+const STILL_AFTER_MS = 4000, STILL = Symbol('still');
+let abandoned = false, stillAt = Infinity;
+const shouldStop = () => storyOn && (abandoned || performance.now() > stillAt);
+// Fetch the still photo early when the board is slow, so it is ready in time.
+function prefetchStill(){
+ if (scene || !storyOn) return;
+ const img = stage.querySelector('.scene-fallback'), pre = new Image();
+ pre.sizes = img.sizes; pre.srcset = img.srcset; pre.src = img.src;
+}
+const stillDeadline = new Promise(resolve => {
+ const arm = start => {
+  stillAt = start + STILL_AFTER_MS;
+  setTimeout(prefetchStill, Math.max(0, start + 1800 - performance.now()));
+  setTimeout(() => resolve(STILL), Math.max(0, stillAt - performance.now()));
+ };
+ const fcp = performance.getEntriesByName('first-contentful-paint')[0];
+ if (fcp) { arm(fcp.startTime); return; }
+ try {
+  new PerformanceObserver((list, observer) => {
+   for (const e of list.getEntries()) if (e.name === 'first-contentful-paint') { observer.disconnect(); arm(e.startTime); }
+  }).observe({type: 'paint', buffered: true});
+ } catch { arm(performance.now()); }
+});
+function showStill(){
+ stage.dataset.webgl = 'unavailable'; stage.classList.add('no-webgl');
+ const img = stage.querySelector('.scene-fallback');
+ const shown = () => img.classList.add('is-loaded');
+ if (img.complete && img.naturalWidth) shown(); else img.addEventListener('load', shown, {once: true});
+}
 function loadScene(){
  if (sceneLoading) return sceneLoading;
  stage.dataset.webgl = 'loading';
  sceneLoading = (async () => {
   try {
-   const {createStoryScene} = await import('./story-scene.js');
-   scene = await createStoryScene(host, {
+   const creating = import('./story-scene.js').then(({createStoryScene}) => shouldStop() ? STILL : createStoryScene(host, {
+    shouldStop,
     lite: storyOn && compact.matches,
     instant: !storyOn || reduced.matches,
-    onFrame: frame => { lastFrame = frame; placeLabels(frame); stage.style.setProperty('--intro', frame.intro.toFixed(3)); }
-   });
+    onFrame: frame => { if (abandoned) return; lastFrame = frame; placeLabels(frame); stage.style.setProperty('--intro', frame.intro.toFixed(3)); }
+   }));
+   const settle = creating.catch(error => { if (error?.message === 'cancelled') return STILL; throw error; });
+   const winner = storyOn ? await Promise.race([settle, stillDeadline]) : await settle;
+   if (winner === STILL) {
+    abandoned = true;
+    creating.then(late => late !== STILL && late?.dispose(), () => {});
+    showStill();
+    root.dataset.scene = 'unavailable'; root.dataset.still = 'timeout';
+    return null;
+   }
+   scene = winner;
    stage.dataset.webgl = 'ready'; stage.classList.add('ready');
    frameScene();
    root.dataset.scene = 'ready';
    return scene;
   } catch (error) {
    console.error('3D view unavailable', error);
-   stage.dataset.webgl = 'unavailable'; stage.classList.add('no-webgl');
+   showStill();
    root.dataset.scene = 'unavailable';
    return null;
   }
@@ -300,7 +362,7 @@ function loadScene(){
 
 function init(){
  if (storyOn) document.body.append(overlay); else stage.append(overlay);
- measure(); measureWindows();
+ measure(); measureWindows(); frameScene();
  addEventListener('scroll', requestUpdate, {passive: true});
  if (storyOn) document.addEventListener('focusin', revealOnFocus);
  const relayout = () => { measure(); measureWindows(); frameScene(); layoutOverlay(); update(true); };
@@ -310,7 +372,6 @@ function init(){
  document.addEventListener('visibilitychange', () => scene?.setActive(!document.hidden && (!storyOn || handoffT < 1)));
  loadSchematic().then(() => { layoutOverlay(); update(true); prewarmOverlay(); });
  update(true);
- // Load three.js after first paint, when the browser is idle.
  if (root.dataset.saveData === 'on') return;
  // The board is the hero: start loading right after first paint.
  requestAnimationFrame(() => setTimeout(() => loadScene().then(s => { if (s) { layoutOverlay(); update(true); prewarmOverlay(); } }), 0));
