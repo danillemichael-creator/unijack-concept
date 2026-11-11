@@ -265,3 +265,4 @@ p{text-wrap:pretty}
 .ed-story-category{color:var(--c-on-dark-3)!important;font-size:var(--t-caption)!important;letter-spacing:0!important;text-transform:none!important}
 .ed-story-main>p:not(.ed-story-category){color:var(--c-on-dark-2)!important;line-height:1.47}
 @media (hover:hover) and (pointer:fine){:is(.back-link,.ed-back,.slide-link,.related-link,.contact-options .official-link,.feature-copy .official-link):hover{color:var(--c-on-dark)!important}}
+.ed-section-heading>p,.section-head>p{color:var(--c-on-dark-2)!important}
