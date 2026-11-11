@@ -158,7 +158,17 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border:0;border-radiu
 .logic-options label{font-weight:600;color:var(--c-on-dark)}
 .logic-options select{min-height:38px;padding:0 36px 0 16px;border:0;border-radius:var(--pill);background:rgba(255,255,255,.1) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%23f5f5f7' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 14px center/11px 7px;appearance:none;font-size:var(--t-small)}
 #routing .erau-system{display:block;min-width:0;max-width:100%;margin:var(--s-5) 0 0}
-#routing .erau-legend,#routing .erau-sketch-caption{display:none}
+/* Legend: explains the trace colours, kept small and quiet. */
+#routing .erau-legend{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 20px;margin:0 0 var(--s-3);color:var(--c-on-dark-2);font-size:var(--t-caption);line-height:1.4;letter-spacing:0}
+#routing .erau-legend span{display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+#routing .erau-legend i{display:inline-block;width:18px;height:0;border-top:3px solid currentColor;border-radius:2px}
+#routing .legend-direct i{color:#ff852f}
+#routing .legend-cross i{color:#2fdc64}
+#routing .legend-loop i{color:#ffe11d}
+#routing .legend-fanout i{color:#129cf4}
+#routing .legend-logic i{height:3px;border:0;background:repeating-linear-gradient(90deg,#ff852f 0 4px,transparent 4px 7px)}
+/* Sketch caption: visually hidden, still read by screen readers. */
+#routing .erau-sketch-caption{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .erau-mobile-hint{display:none;margin:0 0 var(--s-3);color:var(--c-on-dark-3);font-size:var(--t-caption)}
 #routing .approved-routing-window{width:100%;max-width:100%;overflow-x:auto;overflow-y:hidden;background:#061d36;border-radius:var(--radius-lg);scrollbar-width:thin;scrollbar-color:#4d6e86 #061d36}
 #routing .approved-routing-graphic{display:block;width:100%;min-width:625px;height:auto;max-width:none;transition:opacity var(--dur-2) ease}
