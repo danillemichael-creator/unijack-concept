@@ -44,10 +44,6 @@ const host = document.createElement('div');
 host.className = 'stage-canvas';
 host.setAttribute('aria-hidden', 'true');
 stage.prepend(host);
-// Phones: the hardware section shows the board in a panel the cards slide under.
-const hwPanel = document.createElement('div');
-hwPanel.className = 'hw-panel'; hwPanel.setAttribute('aria-hidden', 'true');
-stage.prepend(hwPanel);
 
 // ---------- Annotations ----------
 // Every word below already exists on the page (see the storyboard sources).
@@ -75,8 +71,20 @@ const ANNOTATIONS = {
 // The schematic key, as written in the drawing.
 const KEY_TEXT = {route:'Direct Route', cross:'Cross Route', loopback:'Loop', fanout:'Fan-out', logic:'Logic Operation'};
 for (const g of SCHEMATIC_GROUPS) ANNOTATIONS['group-' + g] = {items:[{key:g, name:KEY_TEXT[g], m:['below',0]}]};
+// Space the caption and the label lanes need above and below the board on
+// phones; the scene centres board + caption + labels as one group with these.
+const CAPTION_H = 48;
+function groupPads(){
+ const out = {};
+ for (const [name, a] of Object.entries(ANNOTATIONS)) {
+  const lane = side => { const it = (a.items || []).filter(i => (i.m?.[0] || 'above') === side && !i.key); return it.length ? 18 + Math.max(...it.map(i => i.m?.[3] || 0)) + (it.some(i => i.tag) ? 40 : 28) : 0; };
+  out[name] = {above:(a.caption ? CAPTION_H + 8 : 0) + lane('above'), below:lane('below'), lane:lane('above')};
+ }
+ return out;
+}
 // Lead first; the others follow at shrinking gaps.
 const STAGGER = [0, .12, .2];
+const PADS = groupPads();
 
 const SVGNS = 'http://www.w3.org/2000/svg';
 const layer = document.createElement('div');
@@ -131,7 +139,7 @@ function geometry(it, spec, anchor, frame, v){
  } else if (compact.matches) {
   // Phones: labels sit in a lane above or below the board, never over it.
   const [lane, dx = 0, forced = 0, row = 0] = spec.m || ['above'], b = frame.bounds;
-  const top = frame.top + (captionText ? 64 : 24), bottom = frame.bottom - 24, r = row + PHONE_ROWS[v >> 1];
+  const top = (captionText ? frame.captionY + CAPTION_H + 10 : frame.top + 16), bottom = frame.bottom - 24, r = row + PHONE_ROWS[v >> 1];
   ey = lane === 'above' ? Math.max(top, Math.min(anchor.y - 28, (b ? b.top : anchor.y) - 18) - r) : Math.min(bottom, Math.max(anchor.y + 28, (b ? b.bottom : anchor.y) + 18) + r);
   const s0 = forced || (anchor.x + dx < W / 2 ? 1 : -1);
   ex = anchor.x + dx; side = v & 1 ? -s0 : s0;
@@ -214,10 +222,16 @@ function drawAnnotations(){
  if (!storyOn || !lastFrame || !scene || stage.dataset.visible === 'false') { layer.style.visibility = 'hidden'; return; }
  const s = lastFrame.progress;
  const frame = annoFrame();
+ // Phones: the caption sits directly above the group (labels, then board).
+ frame.captionY = frame.top + 4;
+ if (compact.matches && frame.bounds && lastFrame.phase !== 'hardware') {
+  const st = stopAt(tl, s).name;
+  frame.captionY = Math.max(frame.top + 4, frame.bounds.top - (PADS[st]?.lane || 0) - CAPTION_H - 8);
+ }
  let n = 0;
  const placed = [], stageBottom = stage.getBoundingClientRect().bottom;
  // The caption is an obstacle too.
- if (captionText && lastFrame.phase !== 'hardware') { if (!captionEl.w) captionEl.w = captionEl.offsetWidth; placed.push({segs:[], rect:{x:vw / 2 - captionEl.w / 2 - 6, y:frame.top + (compact.matches ? 0 : 0), w:captionEl.w + 12, h:compact.matches ? 52 : 44}}); }
+ if (captionText && lastFrame.phase !== 'hardware') { if (!captionEl.w) captionEl.w = captionEl.offsetWidth; placed.push({segs:[], rect:{x:vw / 2 - captionEl.w / 2 - 6, y:frame.captionY - 4, w:captionEl.w + 12, h:CAPTION_H}}); }
  const addItems = (specs, base, drawOf) => {
   specs.forEach((spec, k) => {
    let anchor;
@@ -260,7 +274,7 @@ function drawAnnotations(){
    const o = easeOut(first.draw) * (1 - last.exit);
    setCaption(run.caption, o, 4 * (1 - easeOut(first.draw)));
   } else setCaption(null, 0, 0);
-  captionEl.style.top = `${Math.round(frame.top + (compact.matches ? 6 : 4))}px`;
+  captionEl.style.top = `${Math.round(frame.captionY)}px`;
  }
  hideFrom(n);
  layer.style.visibility = '';
@@ -358,13 +372,29 @@ function measure(){
  setH(sections.beatStats, px(tl.story - b['group-route'].start));
  // The explorer drawing arrives at the top of the screen as the handoff ends.
  sections.panel.style.marginTop = '0px';
- const lead = docTop(sections.graphic) - docTop(sections.panel);
- // The explorer only starts to rise once the finished drawing's hold is over.
- const want = Math.max(px(tl.story + tl.handoff) + vh * .16, px(tl.story) + vh + lead), have = docTop(sections.graphic);
+ const want = px(tl.story + tl.handoff) + vh * .16, have = docTop(sections.graphic);
  sections.panel.style.marginTop = `${Math.max(0, Math.round(want - have))}px`;
  handoff = {from:px(tl.story), to:Math.max(px(tl.story) + 40, docTop(sections.graphic) - vh * .16)};
  measureText();
  measureHardware();
+ placeSnaps();
+}
+
+// ---------- Scroll snap: native CSS, proximity. One marker per hold and per
+// phone text moment; the browser settles on one when scrolling ends nearby.
+const snaps = document.createElement('div');
+snaps.className = 'story-snaps'; snaps.setAttribute('aria-hidden', 'true');
+function placeSnaps(){
+ root.dataset.snap = PACING.snap ? 'on' : 'off';
+ const at = [];
+ for (const st of tl.stops) {
+  if (st.read) at.push(st.start + st.read / 2);
+  if (st.hold) at.push(st.drawEnd + Math.min(.04, st.hold * .25));
+ }
+ // Snap positions are measured from below the page's scroll padding.
+ const pad = parseFloat(getComputedStyle(root).scrollPaddingTop) || 0;
+ while (snaps.children.length < at.length) snaps.append(document.createElement('i'));
+ [...snaps.children].forEach((el, i) => { el.style.display = i < at.length ? '' : 'none'; if (i < at.length) el.style.top = `${Math.round(at[i] * vh + pad)}px`; });
 }
 
 // ---------- Text band: copy scrolls through a band above the board ----------
@@ -385,12 +415,12 @@ function measureText(){
  const localBottom = $('#local-nav').getBoundingClientRect().bottom;
  const tallest = Math.max(...TEXT.map(t => t.height));
  band.top = localBottom + (compact.matches ? 10 : 18);
- band.bottom = band.top + Math.min(tallest + (compact.matches ? 12 : 20), vh * (compact.matches ? .34 : .28));
+ band.bottom = band.top + Math.min(tallest + 8, vh * .4);
 }
 // Phones: text and board take turns. During a stop's "read" stretch its copy
 // sits centred between the local nav and the controls, fully visible and never
 // masked; the board is faded out and returns as the copy leaves.
-const READ_FADE = .12;
+const READ_FADE = .07;
 let boardShown = 1;
 function readText(){
  const areaTop = band.top, areaBottom = stage.getBoundingClientRect().bottom - frameNow.bottom;
@@ -420,22 +450,28 @@ function travelText(){
  if (compact.matches) { readText(); return; }
  boardShown = 1;
  const FADE = 28;
- for (const t of TEXT) {
-  const start = tl.byName[t.at].start;
-  const y = (band.bottom - band.top) - (sRaw - start) * vh; // group top, relative to the band top
+ // Desktop: each block scrolls up into the band, rests there while its chapter
+ // runs (so the copy and the part tabs can be read and used), then scrolls out
+ // as the next chapter's copy arrives.
+ const bandH = band.bottom - band.top;
+ TEXT.forEach((t, k) => {
+  const start = tl.byName[t.at].start, next = TEXT[k + 1], end = (next ? tl.byName[next.at].start : tl.story) - .06;
+  const rest = Math.max(0, (bandH - t.height) / 2);
+  const y = sRaw < end ? rest + Math.max(0, bandH - rest - (sRaw - start) * vh) : rest - (sRaw - end) * vh; // group top, relative to the band top
   const visible = y < band.bottom - band.top && y > -t.height;
   t.els.forEach((el, i) => {
    if (!visible) { if (el.dataset.live !== 'off') { el.style.transform = 'translate3d(0,-200vh,0)'; el.dataset.live = 'off'; } return; }
    const restTop = t.rest[i].top, h = t.rest[i].height;
    const dy = band.top + y + (restTop - t.top) - restTop;
    el.style.transform = `translate3d(0,${dy.toFixed(1)}px,0)`; el.style.opacity = '';
-   const top = restTop + dy, a = band.top - top, b = band.bottom - top;
+   // The fade sits just outside the band, so resting copy is never touched by it.
+   const top = restTop + dy, a = band.top - FADE - top, b = band.bottom + FADE - top;
    const mask = `linear-gradient(to bottom,transparent ${a.toFixed(0)}px,#000 ${(a + FADE).toFixed(0)}px,#000 ${(b - FADE).toFixed(0)}px,transparent ${b.toFixed(0)}px)`;
    el.style.maskImage = el.style.webkitMaskImage = mask;
    const mid = top + h / 2;
    el.dataset.live = String(mid > band.top && mid < band.bottom);
   });
- }
+ });
  const h = 1 - smooth(clamp01(scrollY / (vh * .16)));
  heroText.forEach(el => { el.style.opacity = h.toFixed(3); el.style.pointerEvents = h > .5 ? '' : 'none'; });
 }
@@ -489,11 +525,12 @@ const cards = () => [...(sections.cards?.children || [])];
 function measureHardware(){
  if (!storyOn || !sections.cards) return;
  const list = cards(); if (list.length < 3) return;
- const line = compact.matches ? .7 : .5;
+ const line = .5;
  hwMarks = list.map(c => docTop(c) + c.offsetHeight / 2 - vh * line);
  hwRange = {from:docTop(sections.cards) - vh * .95, to:docTop(sections.cards) + sections.cards.offsetHeight};
 }
-const hwActive = () => storyOn && hwRange && scrollY > hwRange.from && scrollY < hwRange.to;
+// Desktop only: on phones the cards scroll normally with their photos.
+const hwActive = () => storyOn && !compact.matches && hwRange && scrollY > hwRange.from && scrollY < hwRange.to;
 // 0 = entering, 1–3 = the three cards (with holds), 4 = leaving.
 function hardwareX(y){
  const m = hwMarks;
@@ -506,15 +543,8 @@ function layoutHardware(){
  stage.dataset.phase = 'hardware';
  const cr = sections.cards.getBoundingClientRect(), localBottom = $('#local-nav').getBoundingClientRect().bottom;
  const st = stage.getBoundingClientRect();
- let r;
- if (compact.matches) {
-  const h = Math.round(vh * .4), top = Math.min(Math.max(localBottom, cr.top), cr.bottom - h);
-  r = {x:0, y:top, w:vw, h};
-  hwPanel.style.transform = `translate3d(0,${(top - st.top).toFixed(1)}px,0)`; hwPanel.style.height = `${h}px`;
- } else {
-  const h = vh - localBottom - 48, top = Math.min(Math.max(localBottom + 24, cr.top), cr.bottom - h);
-  r = {x:0, y:top, w:Math.round(vw * .56), h};
- }
+ const h = vh - localBottom - 48, top = Math.min(Math.max(localBottom + 24, cr.top), cr.bottom - h);
+ const r = {x:0, y:top, w:Math.round(vw * .56), h};
  // The board never spreads over the cards: the canvas fades out at the region's edge.
  stage.style.setProperty('--hw-right', `${Math.round(r.x + r.w - st.left)}px`);
  stage.style.setProperty('--hw-top', `${Math.round(r.y - st.top)}px`);
@@ -739,6 +769,7 @@ function loadScene(){
     return null;
    }
    scene = winner;
+   scene.setGroupPads(PADS);
    scene.setTimeline(tl);
    stage.dataset.webgl = 'ready'; stage.classList.add('ready');
    frameScene();
@@ -756,7 +787,7 @@ function loadScene(){
 
 function relayout(){ measure(); frameScene(); layoutOverlay(); update(true); }
 function init(){
- if (storyOn) { document.body.append(overlay, layer); } else stage.append(overlay);
+ if (storyOn) { document.body.append(overlay, layer, snaps); } else stage.append(overlay);
  measure(); frameScene();
  addEventListener('scroll', requestUpdate, {passive: true});
  if (storyOn) document.addEventListener('focusin', revealOnFocus);
@@ -778,7 +809,7 @@ function init(){
 // Scroll position (px) where a stop's annotations are fully drawn.
 function scrollForStop(name, at = 'drawEnd'){
  const st = tl.byName[name]; if (!st) return 0;
- return (st[at] + (at === 'drawEnd' ? .02 : 0)) * vh;
+ return (st[at] + (at === 'drawEnd' ? Math.min(.04, st.hold * .25) : 0)) * vh;
 }
 export const story = {
  on: storyOn,

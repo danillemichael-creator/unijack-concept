@@ -35,41 +35,45 @@ export function mercuryInsertionPose(amount,edgeX=-17.5,edgeY=.7){
 //   move = the board or camera moves to the stop
 //   draw = the stop's annotations draw in (nothing else moves)
 //   hold = nothing moves, so the annotations can be read
+//   Total pinned length: about 5.4 screens on desktop, 5.8 on phones.
 //   read = phones only: the stop's heading and paragraph are alone on screen,
 //          fully visible, before the board comes back and moves (0 = none)
 // Phones use the `phone` column below 960px wide.
 // =====================================================================
 export const PACING = {
  desktop: {
-  assembled: {move:.35, draw:.15, hold:.40},
-  exploded:  {move:.50, draw:.15, hold:.45},
-  ports:     {move:.35, draw:.15, hold:.40},
-  chips:     {move:.30, draw:.15, hold:.40},
-  underside: {move:.40, draw:.15, hold:.40},
-  insertion: {move:.25,                                    // camera to the socket
-              separate:{move:.30, draw:.10, hold:.30},     // Mercury lifts out
-              connect: {move:.30, draw:.10, hold:.30}},    // Mercury seats again
-  routing:   {move:.35, draw:.15, hold:.35},
-  schematic: {frame:{draw:.25, hold:.15},                  // outline and headings
-              group:{draw:.18, hold:.20},                  // each of the five colour groups
-              finalHold:.45},                              // finished drawing
-  handoff:   .35                                           // drawing settles into the explorer
+  assembled: {move:.20, draw:.08, hold:.20},
+  exploded:  {move:.28, draw:.08, hold:.20},
+  ports:     {move:.20, draw:.08, hold:.20},
+  chips:     {move:.18, draw:.08, hold:.20},
+  underside: {move:.22, draw:.08, hold:.20},
+  insertion: {move:.12,                                    // camera to the socket
+              separate:{move:.15, draw:.05, hold:.18},     // Mercury lifts out
+              connect: {move:.15, draw:.05, hold:.18}},    // Mercury seats again
+  routing:   {move:.20, draw:.08, hold:.20},
+  schematic: {frame:{draw:.12, hold:.08},                  // outline and headings
+              group:{draw:.08, hold:.10},                  // each of the five colour groups
+              finalHold:.20},                              // finished drawing
+  handoff:   .30                                           // drawing settles into the explorer
  },
  phone: {
-  assembled: {move:.40, draw:.15, hold:.45},
-  exploded:  {read:.70, move:.45, draw:.15, hold:.50},
-  ports:     {read:.70, move:.30, draw:.15, hold:.45},
-  chips:     {move:.30, draw:.15, hold:.45},
-  underside: {move:.35, draw:.15, hold:.45},
-  insertion: {move:.20,
-              separate:{move:.30, draw:.10, hold:.35},
-              connect: {move:.30, draw:.10, hold:.40}},
-  routing:   {read:.80, move:.30, draw:.15, hold:.40},
-  schematic: {frame:{read:.60, draw:.25, hold:.15},
-              group:{draw:.18, hold:.25},
-              finalHold:.50},
-  handoff:   .30
- }
+  assembled: {move:.20, draw:.06, hold:.20},
+  exploded:  {read:.28, move:.22, draw:.06, hold:.18},
+  ports:     {read:.28, move:.16, draw:.06, hold:.18},
+  chips:     {move:.15, draw:.06, hold:.18},
+  underside: {move:.18, draw:.06, hold:.18},
+  insertion: {move:.10,
+              separate:{move:.12, draw:.04, hold:.16},
+              connect: {move:.12, draw:.04, hold:.16}},
+  routing:   {read:.28, move:.16, draw:.06, hold:.18},
+  schematic: {frame:{read:.26, draw:.10, hold:.06},
+              group:{draw:.07, hold:.09},
+              finalHold:.18},
+  handoff:   .25
+ },
+ // The page settles onto a stop when scrolling ends near one (CSS scroll snap,
+ // proximity). Each hold, and each phone text moment, is a snap point.
+ snap: true
 };
 
 // Board state at the end of each stop's move. Values carry forward.
@@ -120,13 +124,14 @@ export function poseAt(tl, s){
  // The explode reads as one movement: all parts start within a few percent.
  const ex = w => a.explode + (b.explode - a.explode) * easeInOut(span(t, w));
  const dim = stop.name === 'frame' ? easeInOut(clamp01((s - stop.moveEnd) / (stop.draw || 1))) : stop.schematic ? 1 : a.dim;
- return {phase:'story', stop:stop.name, camA:a.cam, camB:b.cam, camT:e, hero:mix('hero'),
+ const prev = tl.stops[tl.stops.indexOf(stop) - 1];
+ return {phase:'story', stop:stop.name, prev:prev ? prev.name : stop.name, camA:a.cam, camB:b.cam, camT:e, hero:mix('hero'),
   explode:{peri:ex([0,.8]), mercury:ex([.06,.86]), components:ex([.12,.92])},
   insertion:mix('insertion'), flip:mix('flip'), leave:mix('leave'), dim};
 }
 // Draw-in (0–1) and exit (0–1) of a stop's annotations at position s. They
 // leave at the end of their own stop, so only one stop's annotations ever show.
-export const EXIT = .06;
+export const EXIT = .04;
 export function annotationState(tl, stop, s){
  const drawFrom = stop.draw ? stop.moveEnd : Math.max(stop.readEnd, stop.moveEnd - .1), drawTo = stop.draw ? stop.drawEnd : stop.moveEnd;
  const draw = clamp01((s - drawFrom) / Math.max(.001, drawTo - drawFrom));

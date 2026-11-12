@@ -366,7 +366,8 @@ power(base,-73.8,-27.6);terminal(base);usb(base,-72.1,6.0);ethernet(base,-72.5,2
   return {
    // GPU storage was sized for the preview: release it so it is reallocated.
    apply(){ for (const f of Object.keys(images)) { originals[f].image = images[f]; for (const t of [originals[f], ...(clonesOf[f] || [])]) { t.dispose(); t.needsUpdate = true; } } },
-   refineFinish(){ for (const f of Object.keys(images)) { const map = photoFinishes[f]; refinePhotoFinish(map, images[f], finishWidth); for (const t of [map, ...(finishClonesOf[f] || [])]) { t.dispose(); t.needsUpdate = true; } } }
+   // One step per photo, so the caller can spread the work over separate idle moments.
+   refineSteps: Object.keys(images).map(f => () => { const map = photoFinishes[f]; refinePhotoFinish(map, images[f], finishWidth); for (const t of [map, ...(finishClonesOf[f] || [])]) { t.dispose(); t.needsUpdate = true; } })
   };
  }
  return {root,base,mercury,peri,upgradeTextures,stats:root.userData.geometry,rest:{mercury:mercury.position.clone(),peri:peri.position.clone()}};

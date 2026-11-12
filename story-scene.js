@@ -124,12 +124,30 @@ export async function createStoryScene(host,{lite=false,instant=false,timeline=n
    insertion:fit(boxes.insertion,az0+.5,.58,lite?.62:.66,regionRatio*(lite?.62:.82)),
    topDown:fit(boxes.base,0,THREE.MathUtils.degToRad(88.5),cw*.78,ch*.86)
   };
+  // Phones: close-ups never run under the caption or the control bar. The camera
+  // backs off until the whole board fits the space left for it at that stop.
+  if(lite&&tl){
+   const withAll=b=>b.clone().union(boxes.all);
+   for(const [name,box,stop] of [['ports',boxes.all,'ports'],['chips',boxes.all,'chips'],['underside',withAll(boxes.flipped),'underside'],['insertion',withAll(boxes.insertion),'separate']])fitVertical(keys[name],box,pads[stop]);
+  }
   if(hwBox.w>0){
    const hw=hwBox.w/W*(lite?.94:.86),hh=hwBox.h/H*.8;hwDx=hwBox.x+hwBox.w/2-W/2;hwDy=hwBox.y+hwBox.h/2-H/2;
    Object.assign(keys,{'hw-all':fit(boxes.all,az0+yaw,el0-.03,hw,hh),'hw-out':fit(boxes.all,az0,el0,hw,hh),
-    'hw-base':fit(boxes.base,az0+yaw+.12,el0+.02,hw*1.08,hh*1.08),
-    'hw-mercury':fit(boxes.mercury,az0+yaw+.2,el0+.12,hw*.42,hh*.42),
-    'hw-peri':fit(boxes.peri,az0+yaw-.18,el0+.06,hw*.42,hh*.42)});
+    // The whole board stays inside its column at every card, so nothing reaches the cards.
+    'hw-base':fit(boxes.all,az0+yaw+.1,el0+.03,hw,hh),'hw-mercury':fit(boxes.all,az0+yaw+.22,el0+.1,hw,hh),'hw-peri':fit(boxes.all,az0+yaw-.14,el0+.05,hw,hh)});
+  }
+ }
+ let pads={};
+ const probeCam=new THREE.PerspectiveCamera();
+ function fitVertical(k,box,pad){
+  const H=canvas.clientHeight||1,avail=Math.max(80,H-frameBox.top-frameBox.bottom-(pad?.above||0)-(pad?.below||0));
+  probeCam.fov=camera.fov;probeCam.aspect=camera.aspect;probeCam.near=camera.near;probeCam.far=camera.far;probeCam.updateProjectionMatrix();
+  for(let i=0;i<24;i++){
+   probeCam.position.set(Math.sin(k.az)*Math.cos(k.el),Math.sin(k.el),Math.cos(k.az)*Math.cos(k.el)).multiplyScalar(k.distance).add(k.target);probeCam.up.set(0,1,0);probeCam.lookAt(k.target);probeCam.updateMatrixWorld();
+   let min=1e9,max=-1e9;
+   for(let c=0;c<8;c++){const v=V(c&1?box.max.x:box.min.x,c&2?box.max.y:box.min.y,c&4?box.max.z:box.min.z).project(probeCam);min=Math.min(min,v.y);max=Math.max(max,v.y);}
+   const h=(max-min)/2*H;if(h<=avail)break;
+   k.distance*=Math.min(1.5,Math.max(1.03,h/avail));
   }
  }
  // Framing without changing perspective: shift the projection.
@@ -153,6 +171,7 @@ export async function createStoryScene(host,{lite=false,instant=false,timeline=n
  for(const name of Object.keys(ANCHORS))out.anchors[name]={x:0,y:0,on:false};
  const tmp=new THREE.Vector3(),mTarget=new THREE.Vector3(),pTarget=new THREE.Vector3(),corner=new THREE.Vector3();
  const partBox=new THREE.Box3();
+ const NOPAD={above:0,below:0};
  const restPose={phase:'story',camA:'hero',camB:'hero',camT:0,hero:1,explode:{peri:0,mercury:0,components:0},insertion:1,flip:0,leave:0,dim:0};
 
  function pose(){
@@ -185,7 +204,8 @@ export async function createStoryScene(host,{lite=false,instant=false,timeline=n
   const e=easeOut(state.intro),Hc=canvas.clientHeight||1;
   const heroT=P.hero;
   const heroDrop=Math.max(0,frameBox.hero-frameBox.top)*.62*heroT;
-  if(hw)applyOffset(hwDy+Hc*.14*(1-e),hwDx);else applyOffset(steadyDy+heroDrop+Hc*.14*(1-e));
+  const baseDy=hw?hwDy+Hc*.14*(1-e):steadyDy+heroDrop+Hc*.14*(1-e);
+  applyOffset(baseDy,hw?hwDx:0);
   const distance=cam.distance*(1+.32*(1-e)+(!hw&&frameBox.hero>frameBox.top?.18*heroT:0));
   camera.position.set(Math.sin(az)*Math.cos(el),Math.sin(el),Math.cos(az)*Math.cos(el)).multiplyScalar(distance).add(cam.target);
   camera.up.set(0,1,0);camera.lookAt(cam.target);
@@ -203,6 +223,15 @@ export async function createStoryScene(host,{lite=false,instant=false,timeline=n
    partBox.setFromObject(part);
    for(let k=0;k<8;k++){corner.set(k&1?partBox.max.x:partBox.min.x,k&2?partBox.max.y:partBox.min.y,k&4?partBox.max.z:partBox.min.z).project(camera);
     const sx=(corner.x*.5+.5)*W,sy=(-corner.y*.5+.5)*H;minX=Math.min(minX,sx);maxX=Math.max(maxX,sx);minY=Math.min(minY,sy);maxY=Math.max(maxY,sy);}
+  }
+  // Phones: caption, board and annotations sit as one group, centred between
+  // the header and the control bar. The pads are the space the caption and
+  // labels need above and below the board at this stop.
+  if(lite&&!hw&&P.phase==='story'&&minY<maxY){
+   const a=pads[P.prev]||NOPAD,b=pads[P.stop]||NOPAD,above=lerp(a.above,b.above,P.camT),below=lerp(a.below,b.below,P.camT);
+   const centre=frameBox.top+(H-frameBox.top-frameBox.bottom)/2;
+   const delta=(centre-(minY-above+maxY+below)/2)*(1-heroT)*e;
+   if(Math.abs(delta)>.25){applyOffset(baseDy+delta,0);minY+=delta;maxY+=delta;for(const a2 of Object.values(out.anchors))a2.y+=delta;}
   }
   out.bounds={left:minX,right:maxX,top:minY,bottom:maxY};
   out.progress=state.p;out.intro=e;out.phase=P.phase;out.stop=P.stop;
@@ -293,7 +322,7 @@ export async function createStoryScene(host,{lite=false,instant=false,timeline=n
   await whenSettled();
   crossfadeSwap(upgrade.apply);
   await new Promise(r=>setTimeout(r,400));await whenSettled();
-  upgrade.refineFinish();request();
+  for(const step of upgrade.refineSteps){await whenSettled();step();request();await new Promise(r=>setTimeout(r,300));}
  }).catch(error=>console.warn('Full product photos unavailable; keeping previews',error));
  Object.assign(canvas.dataset,{triangles:String(source.stats.triangles),materialBatches:String(source.stats.materialBatches)});
 
@@ -308,7 +337,8 @@ export async function createStoryScene(host,{lite=false,instant=false,timeline=n
    canvas.after(snap);state.p=state.target=Math.max(0,value);lastInput=performance.now();render();
    requestAnimationFrame(()=>requestAnimationFrame(()=>{snap.style.opacity='0';setTimeout(()=>snap.remove(),ms+150);}));
   },
-  setTimeline(value){tl=value;request();},
+  setTimeline(value){tl=value;layoutKeys();request();},
+  setGroupPads(value){pads=value;layoutKeys();request();},
   setHardwareFrame(x,y,w,h){if(hwBox.x===x&&hwBox.y===y&&hwBox.w===w&&hwBox.h===h)return;Object.assign(hwBox,{x,y,w,h});layoutKeys();request();},
   setOverride(o){
    if(o){state.override={focus:'all',inspection:'overview',insertion:1,...o};state.weightTarget=1;}

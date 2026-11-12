@@ -45,9 +45,20 @@ h1 span,h2 span{color:var(--c-on-dark-3)}
 }
 
 /* ---------- Local nav ---------- */
-.local-nav{position:sticky;top:0;z-index:900;height:var(--local);background:rgba(0,0,0,.72);border-bottom:1px solid var(--c-line-dark);-webkit-backdrop-filter:saturate(1.8) blur(20px);backdrop-filter:saturate(1.8) blur(20px)}
-.local-nav-inner{position:relative;display:flex;align-items:center;gap:var(--s-5);height:100%;max-width:var(--content);margin:0 auto;padding:0 var(--gutter)}
-.local-nav-title{margin-right:auto;display:inline-flex;align-items:center;min-height:44px;font-size:21px;font-weight:600;letter-spacing:-.02em;white-space:nowrap}
+/* One bar: the global header is fixed and the product nav sits inside it,
+   right-aligned before the menu button (or after the header's own action). */
+.page-unijack{--header:var(--local)}
+.page-unijack main{padding-top:var(--local)}
+.page-unijack .tb-header .tb-header-inner{max-width:1260px}
+.local-nav{position:fixed;top:0;right:calc(max(0px,(100% - 1260px)/2) + var(--gutter));z-index:1001;height:var(--local);pointer-events:none}
+.local-nav-inner{display:flex;align-items:center;gap:12px;height:100%;pointer-events:auto}
+.local-nav-title{display:inline-flex;align-items:center;min-height:44px;font-size:17px;font-weight:600;letter-spacing:-.015em;white-space:nowrap;transition:color var(--dur-2) ease}
+html[data-header-theme=light] .local-nav-title{color:var(--c-on-light)}
+html[data-header-theme=light] .local-nav :focus-visible{outline-color:var(--c-cyan-deep)}
+@media (min-width:1068px){.page-unijack .tb-header .tb-header-inner{padding-right:calc(var(--gutter) + 216px)}}
+/* Between 1068 and 1279px the bar has no room for both actions: the header's own "Discuss a project" link yields to the product's "Contact TBench". */
+@media (min-width:1068px) and (max-width:1279px){.page-unijack .tb-header .tb-contact{display:none}}
+@media (max-width:1067px){.local-nav{right:calc(var(--gutter) + 40px)}.page-unijack .tb-header .tb-brand img{width:84px}}
 .local-nav-cta{position:relative;display:inline-flex;align-items:center;min-height:28px;padding:0 12px;border-radius:var(--pill);background:var(--c-cyan);color:var(--c-cyan-ink);font-size:12px;font-weight:600;letter-spacing:0;white-space:nowrap;transition:background-color var(--dur-2) ease}
 .local-nav-cta::after{content:'';position:absolute;inset:-8px -4px}
 @media (hover:hover) and (pointer:fine){.local-nav-cta:hover{background:var(--c-cyan-2)}}
@@ -307,7 +318,9 @@ html:not([data-story=on]) .routing-section{padding-top:0}
 @media (min-width:960px){[data-story=on] #product-stage[data-phase=hardware] .stage-canvas{-webkit-mask-image:linear-gradient(to right,#000 calc(var(--hw-right,56vw) - 96px),transparent var(--hw-right,56vw));mask-image:linear-gradient(to right,#000 calc(var(--hw-right,56vw) - 96px),transparent var(--hw-right,56vw))}}
 [data-story=on] #product-stage[data-phase=hardware] :is(.scene-controls,.scene-footnote){visibility:hidden}
 [data-story=on] #product-stage[data-phase=hardware]::before{display:none}
-.hw-panel{display:none}
+/* Scroll snap markers (story.js places one per hold). */
+html[data-story=on][data-snap=on]{scroll-snap-type:y proximity}
+.story-snaps i{position:absolute;left:0;width:1px;height:1px;pointer-events:none;scroll-snap-align:start}
 
 /* ---------- Annotations: dot, thin leader, short label ---------- */
 .story-annotations{position:fixed;inset:0;z-index:8;pointer-events:none;--anno-line:rgba(245,245,247,.62);--anno-dot:var(--c-cyan);--anno-tag:var(--c-on-dark);--anno-name:var(--c-on-dark-2);--anno-single:var(--c-on-dark)}
@@ -329,7 +342,7 @@ html:not([data-story=on]) .routing-section{padding-top:0}
 
 [data-story=on] :is(main>.hero,.beat-proof,#platform,.assembly-section,#routing){position:relative;z-index:1;pointer-events:none}
 [data-story=on] :is(.hero-copy,.hero-bottom)>*{pointer-events:auto}
-[data-story=on] .hero{min-height:calc(100svh - var(--header) - var(--local))}
+[data-story=on] .hero{min-height:calc(100svh - var(--local))}
 [data-story=on] .hero-copy{padding-top:clamp(16px,3svh,36px)}
 [data-story=on] .hero-bottom{position:absolute;left:0;right:0;bottom:0;height:96px;pointer-events:none}
 [data-story=on] .hero-bottom>span{position:absolute;left:var(--gutter);bottom:42px;max-width:16em;text-align:left;pointer-events:auto}
@@ -343,10 +356,16 @@ html:not([data-story=on]) .routing-section{padding-top:0}
 [data-story=on] #platform{max-width:none;padding:0}
 /* Fallback heights (≈ the timeline) until story.js sets exact ones, so the page
    is full length at first paint and later images stay outside the lazy-load range. */
-[data-story=on] #platform{height:110svh}
-[data-story=on] .assembly-section{height:435svh}
-[data-story=on] .beat-routing{height:125svh}
-[data-story=on] .beat-stats{height:185svh}
+[data-story=on] #platform{height:56svh}
+[data-story=on] .assembly-section{height:232svh}
+[data-story=on] .beat-routing{height:68svh}
+[data-story=on] .beat-stats{height:110svh}
+@media (max-width:959px){
+ [data-story=on] #platform{height:74svh}
+ [data-story=on] .assembly-section{height:223svh}
+ [data-story=on] .beat-routing{height:110svh}
+ [data-story=on] .beat-stats{height:98svh}
+}
 [data-story=on] #routing{padding:0}
 /* Copy in the band: positioned by scroll, masked at the band's edges. */
 [data-story=on] :is(#platform,.beat-routing,.beat-stats) .story-text{position:fixed;left:0;right:0;top:var(--band-top);z-index:2;max-width:none;margin:0;padding:0 var(--gutter);text-align:center;pointer-events:none;transform:translate3d(0,-200vh,0);will-change:transform}
@@ -424,9 +443,6 @@ html:not([data-story=on]) .routing-section{padding-top:0}
  .hero-actions{gap:var(--s-1) var(--s-4)}
  .hero .button{padding:0 18px}
 
- /* Hardware: the board rides in a light panel above the cards, which slide under it. */
- [data-story=on] .products-section .product-cards{padding-top:40svh}
- [data-story=on] #product-stage[data-phase=hardware] .hw-panel{display:block;position:absolute;left:0;right:0;top:0;background:var(--c-light);box-shadow:0 1px 0 var(--c-line-light),0 12px 24px -12px rgba(0,0,0,.12)}
  .anno-name{font-size:13px}
  [data-story=on] .hero-bottom{position:static;height:auto;margin-top:var(--s-2);flex-direction:column;gap:0}
  [data-story=on] .hero-bottom>a{min-height:32px}
@@ -463,9 +479,8 @@ html:not([data-story=on]) .routing-section{padding-top:0}
    the detail tabs and the insertion panel take turns in the same place, and
    the board is always framed (and clipped) above them. */
 @media (max-width:959px){
- [data-story=on] #product-stage .stage-canvas{transform:none;-webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 166px),transparent calc(100% - 146px));mask-image:linear-gradient(to bottom,#000 calc(100% - 166px),transparent calc(100% - 146px))}
+ [data-story=on] #product-stage .stage-canvas{transform:none}
  [data-story=on][data-chapter=assembly] #product-stage .stage-canvas{transform:none}
- [data-story=on] #product-stage[data-phase=hardware] .stage-canvas{-webkit-mask-image:none;mask-image:none}
  /* The board is fully out while the drawing is on (it is not registered to it on phones). */
  [data-story=on] .ready .stage-webgl{opacity:calc(var(--intro,0) * (1 - var(--dim,0)) * var(--board,1))}
  [data-story=on] .scene-controls{bottom:44px}
