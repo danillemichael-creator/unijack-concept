@@ -285,17 +285,7 @@ p{text-wrap:pretty}
 /* Focus cards fit their content. */
 .focus-card{min-height:0!important}
 .focus-card h3{margin:var(--s-3) 0 0}
-/* Home carousel: tiles fit their text; the illustration sits unframed beside it. */
 .slide,.slide-body{min-height:0!important}
-@media (min-width:1151px){
- .slide{align-items:center}
- .slide-art{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--s-5);margin:0!important;padding:clamp(28px,4vw,56px) clamp(28px,4vw,56px) clamp(28px,4vw,56px) 0;border-radius:0!important;background:none!important;overflow:visible}
- .slide-art .art-grid{display:none}
- .slide-art :is(.art-head,.art-legend){position:static}
- .slide-art .art-board{position:relative;top:auto;left:auto;margin:20px 0;transform:rotate(-13deg)}
- .slide-art .art-stack{position:relative;top:auto;left:auto;width:min(100%,340px);margin:14px 0;transform:rotate(-8deg)}
- .slide-art .art-progression{position:static;padding:0}
-}
 @media (max-width:599px){
  .page-subpage:not(.page-product) .sub-hero-card>strong{font-size:clamp(2rem,calc((100vw - var(--gutter)*2)/10.4),2.5rem)}
 }
@@ -304,3 +294,22 @@ p{text-wrap:pretty}
 .related-photo img{display:block;transition:opacity 400ms var(--ease-out,ease-out)}
 .related-photo[data-loading] img{opacity:0}
 @media (prefers-reduced-motion:reduce){.related-photo img{transition:none}}
+
+/* ---------- Home carousel: one narrow, centred text card ---------- */
+.carousel{max-width:820px}
+/* All three slides share one grid cell, so the card keeps the height of the tallest slide. */
+.slides{display:grid}
+.slides .slide{grid-area:1/1;display:flex!important;align-items:flex-start;justify-content:center;grid-template-columns:none}
+.slides .slide[hidden]{visibility:hidden}
+.slide-art{display:none!important}
+.slide-body{align-items:center;width:100%;gap:0;text-align:center}
+.slide-body .micro{margin:0 0 var(--s-4)}
+.slide-body h3{max-width:16ch;margin:0 0 var(--s-4);text-wrap:balance}
+.slide-body>p:not(.micro){max-width:30rem;margin:0 0 var(--s-5)}
+.slide-tags{justify-content:center;margin:0 0 var(--s-4)}
+.slide-link{align-self:center;justify-content:center;gap:2px;width:auto;margin-top:0}
+/* Phones: the two tags stack, so a wrapped line never starts with a separator dot. */
+@media (max-width:480px){
+ .slide-tags{flex-direction:column;align-items:center}
+ .slide-tags span+span::before{display:none}
+}
