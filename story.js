@@ -384,13 +384,22 @@ function measure(){
 // phone text moment; the browser settles on one when scrolling ends nearby.
 const snaps = document.createElement('div');
 snaps.className = 'story-snaps'; snaps.setAttribute('aria-hidden', 'true');
+// Snapping is off from the top of the page until just before the first snap
+// point, so the hero never pulls the page forward and scrolling back up to it
+// is never pulled back down.
+let snapFrom = Infinity;
+function setSnap(s){
+ const snap = PACING.snap && s > snapFrom ? 'on' : 'off';
+ if (root.dataset.snap !== snap) root.dataset.snap = snap;
+}
 function placeSnaps(){
- root.dataset.snap = PACING.snap ? 'on' : 'off';
  const at = [];
- for (const st of tl.stops) {
+ // No snap point on the first stop: the hero scrolls freely.
+ for (const st of tl.stops.slice(1)) {
   if (st.read) at.push(st.start + st.read / 2);
   if (st.hold) at.push(st.drawEnd + Math.min(.04, st.hold * .25));
  }
+ snapFrom = at.length ? at[0] - .08 : Infinity;
  // Snap positions are measured from below the page's scroll padding.
  const pad = parseFloat(getComputedStyle(root).scrollPaddingTop) || 0;
  while (snaps.children.length < at.length) snaps.append(document.createElement('i'));
@@ -674,6 +683,8 @@ function update(force = false){
  if (!storyOn) { drawSchematic(staticView === 'routing' ? 1e3 : 0, 0, staticView === 'routing'); drawAppLines(); return; }
  const y = scrollY;
  sRaw = y / vh;
+ // Snapping only starts once the hero and its first stop are behind; near the top the page never pulls.
+ setSnap(sRaw);
  const h = clamp01((y - handoff.from) / (handoff.to - handoff.from));
  layoutHardware();
  let s = sRaw;
@@ -826,6 +837,7 @@ export const story = {
   if (storyOn) {
    const name = SHORTCUT[view] || view, target = scrollForStop(name);
    const far = Math.abs(target - scrollY) > vh * 1.2;
+   setSnap(target / vh);
    if (reduced.matches || far || compact.matches) { scene?.crossfadeTo(target / vh); scrollTo({top:target, behavior:'instant'}); }
    else scrollTo({top:target, behavior:'smooth'});
    return;
