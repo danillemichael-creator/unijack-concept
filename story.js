@@ -300,15 +300,19 @@ const STILL_AFTER_MS = 4000, STILL = Symbol('still');
 let abandoned = false, stillAt = Infinity;
 const shouldStop = () => storyOn && (abandoned || performance.now() > stillAt);
 // Fetch the still photo early when the board is slow, so it is ready in time.
+// Phones use a small copy of the still and start fetching it with the page.
+const PHONE_STILL = './assets/responsive/gallery-1-780.webp';
+const phoneStill = () => storyOn && innerWidth < 600;
 function prefetchStill(){
  if (scene || !storyOn) return;
  const img = stage.querySelector('.scene-fallback'), pre = new Image();
+ if (phoneStill()) { img.removeAttribute('srcset'); img.removeAttribute('sizes'); img.src = PHONE_STILL; pre.src = PHONE_STILL; return; }
  pre.sizes = img.sizes; pre.srcset = img.srcset; pre.src = img.src;
 }
 const stillDeadline = new Promise(resolve => {
  const arm = start => {
   stillAt = start + STILL_AFTER_MS;
-  setTimeout(prefetchStill, Math.max(0, start + 1800 - performance.now()));
+  if (phoneStill()) prefetchStill(); else setTimeout(prefetchStill, Math.max(0, start + 1800 - performance.now()));
   setTimeout(() => resolve(STILL), Math.max(0, stillAt - performance.now()));
  };
  const fcp = performance.getEntriesByName('first-contentful-paint')[0];

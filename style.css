@@ -295,6 +295,9 @@ html:not([data-story=on]) .routing-section{padding-top:0}
 [data-story=on] #product-stage.no-webgl::before{opacity:0;transition:opacity 300ms ease;animation:none}
 [data-story=on] #product-stage.no-webgl .scene-fallback{display:block;left:50%;top:var(--still-top,45%);width:var(--still-w,60vw);height:var(--still-h,34vw);transform:translateX(-50%);object-fit:cover;border-radius:var(--radius-lg);opacity:0;transition:opacity 300ms ease}
 [data-story=on] #product-stage.no-webgl .scene-fallback.is-loaded{opacity:1}
+/* Time-limit still: the "3D unavailable" notes apply only when WebGL is actually missing. */
+[data-still=timeout] #scene-hint,[data-still=timeout] .assembly-stage .assembly-note{display:none}
+[data-still=timeout] #scene-hint+span::before{content:none}
 [data-story=on] .scene-controls{left:50%;bottom:30px;transform:translateX(-50%);pointer-events:auto;opacity:calc(var(--intro,1) * (1 - var(--dim,0)))}
 [data-story=on] .scene-footnote{left:var(--gutter);right:var(--gutter);bottom:6px;opacity:calc(1 - var(--dim,0))}
 [data-story=on] :is(.scene-controls,.scene-footnote){transition:visibility 0s linear var(--dur-3)}
