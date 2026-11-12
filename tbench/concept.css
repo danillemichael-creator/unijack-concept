@@ -269,3 +269,38 @@ p{text-wrap:pretty}
 .ed-story-main>p:not(.ed-story-category){color:var(--c-on-dark-2)!important;line-height:1.47}
 @media (hover:hover) and (pointer:fine){:is(.back-link,.ed-back,.slide-link,.related-link,.contact-options .official-link,.feature-copy .official-link):hover{color:var(--c-on-dark)!important}}
 .ed-section-heading>p,.section-head>p{color:var(--c-on-dark-2)!important}
+
+
+/* ---------- Text-only audience pages: nothing is boxed unless it holds content ---------- */
+/* Hero: the former hero card is unboxed. Its diagram becomes a slim divider,
+   its tagline a centred statement, its labels quiet small text around it. */
+.page-subpage:not(.page-product) .sub-hero-grid{gap:clamp(56px,7vw,104px)}
+.page-subpage:not(.page-product) .sub-hero-card{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:var(--s-4);max-width:none;padding:0!important;border-radius:0!important;background:none!important;overflow:visible;text-align:center}
+.page-subpage:not(.page-product) .sub-card-diagram{order:0;width:min(100%,560px);gap:16px;margin:0 0 clamp(28px,3.5vw,48px);padding:0}
+.page-subpage:not(.page-product) .sub-card-diagram span{display:block;flex:none!important;width:auto!important;height:auto!important;border:0!important;border-radius:0;color:var(--c-on-dark-3);font:500 12px/1 var(--font-mono);font-variant-numeric:tabular-nums}
+.page-subpage:not(.page-product) .sub-card-diagram i{flex:1 1 0;width:auto!important;height:1px;background:var(--c-line-dark-2)!important}
+.page-subpage:not(.page-product) .sub-card-header{order:1;justify-content:center}
+.page-subpage:not(.page-product) .sub-hero-card>strong{order:2;max-width:16ch;font-size:var(--t-h2);line-height:1.05;letter-spacing:-.025em;text-wrap:balance}
+.page-subpage:not(.page-product) .sub-card-footer{order:3;justify-content:center}
+/* Focus cards fit their content. */
+.focus-card{min-height:0!important}
+.focus-card h3{margin:var(--s-3) 0 0}
+/* Home carousel: tiles fit their text; the illustration sits unframed beside it. */
+.slide,.slide-body{min-height:0!important}
+@media (min-width:1151px){
+ .slide{align-items:center}
+ .slide-art{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--s-5);margin:0!important;padding:clamp(28px,4vw,56px) clamp(28px,4vw,56px) clamp(28px,4vw,56px) 0;border-radius:0!important;background:none!important;overflow:visible}
+ .slide-art .art-grid{display:none}
+ .slide-art :is(.art-head,.art-legend){position:static}
+ .slide-art .art-board{position:relative;top:auto;left:auto;margin:20px 0;transform:rotate(-13deg)}
+ .slide-art .art-stack{position:relative;top:auto;left:auto;width:min(100%,340px);margin:14px 0;transform:rotate(-8deg)}
+ .slide-art .art-progression{position:static;padding:0}
+}
+@media (max-width:599px){
+ .page-subpage:not(.page-product) .sub-hero-card>strong{font-size:clamp(2rem,calc((100vw - var(--gutter)*2)/10.4),2.5rem)}
+}
+/* Related-hardware photo: a tiny blurred preview fills the frame while the photo loads; the photo then fades in. */
+.related-photo{background:#eceff1 url("data:image/webp;base64,UklGRnwAAABXRUJQVlA4IHAAAACQBACdASogABIAPuVgp02pJaOiMAwBIByJQBb3A9IG37IxL/8L2i1IqQ94ZSgA/vO+Wv3OnGTTy2hSzxiDg0k8OARUjOMO1yxpeOuI4AB/rkMDSBgmpZ1GLHc92YEWF1ydTWlmFpeAc1T4sjHyAAAA") center/cover no-repeat!important}
+.related-photo img{display:block;transition:opacity 400ms var(--ease-out,ease-out)}
+.related-photo[data-loading] img{opacity:0}
+@media (prefers-reduced-motion:reduce){.related-photo img{transition:none}}
