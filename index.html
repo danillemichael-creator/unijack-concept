@@ -10,17 +10,17 @@
 <meta property="og:description" content="The UniJack platform, Mercury controller, PeriBoard and ERAU signal routing.">
 <meta property="og:image" content="https://britneylinda14-stack.github.io/tbench-unijack-copy/assets/gallery-1.jpg">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23080b10'/%3E%3Cpath d='M8 7v12a8 8 0 0016 0V7h-4v12a4 4 0 01-8 0V7z' fill='%2374e2f4'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="./tokens.css?v=apple-3">
-<link rel="stylesheet" href="./tbench/shared-nav.css?v=apple-3">
-<link rel="stylesheet" href="./style.css?v=apple-3">
+<link rel="stylesheet" href="./tokens.css?v=apple-4">
+<link rel="stylesheet" href="./tbench/shared-nav.css?v=apple-4">
+<link rel="stylesheet" href="./style.css?v=apple-4">
 <script>
-// Decide the layout before first paint: the pinned scroll story needs motion
-// allowed and WebGL; otherwise the page uses the static, docked layout.
+// Decide the layout before first paint: the pinned scroll story needs WebGL
+// (with reduced motion it steps between stops); otherwise the static layout.
 (function(d){var m=window.matchMedia,r=m&&m('(prefers-reduced-motion: reduce)').matches,c=navigator.connection,s=c&&c.saveData;
-d.dataset.saveData=s?'on':'off';d.dataset.story=!r&&!s&&!!window.WebGLRenderingContext?'on':'off';})(document.documentElement);
+d.dataset.saveData=s?'on':'off';d.dataset.motion=r?'reduced':'full';d.dataset.story=!s&&!!window.WebGLRenderingContext?'on':'off';})(document.documentElement);
 </script>
 <script type="importmap">{"imports":{"three":"./vendor/three.module.min.js","three/addons/":"./vendor/"}}</script>
-<link rel="modulepreload" href="./app.js?v=apple-3">
+<link rel="modulepreload" href="./app.js?v=apple-4">
 <link rel="modulepreload" href="./story.js">
 <link rel="modulepreload" href="./motion.js">
 <script>
@@ -169,5 +169,5 @@ text{font-family:Arial,Helvetica,sans-serif;fill:#b6d0fa}.heading{font-size:26px
 <section class="footnotes"><div class="footnotes-inner"><div class="product-evidence"><span>*Specifications and interface claims are vendor-stated; unverified on hardware.</span><a href="https://www.crowdsupply.com/tbench-solutions/unijack-and-mercury-module" target="_blank" rel="noopener">View product source</a></div><details class="evidence-details"><summary>Technical notes &amp; sources</summary><div><p>Product descriptions and specifications are published by TBench on its <a href="https://www.tbenchsolutions.com/products/unijack/" target="_blank" rel="noopener">UniJack product page</a> and <a href="https://www.crowdsupply.com/tbench-solutions/unijack-and-mercury-module" target="_blank" rel="noopener">Crowd Supply campaign</a>. They remain vendor-stated, with no independent hardware validation supplied for this website.</p><p>The 3D views use the detailed photo-based reconstruction, with raised chips, open connector shells, contact pins and board materials informed by the campaign photographs. Module and connector proportions use reference dimensions; board outlines, component heights, housing lengths and placement remain estimates. The fitted connector part numbers are unconfirmed. This is an illustrative model, not measured CAD. Signal animations explain a concept; their paths, speeds and colors do not represent hardware measurements. No product certification or timing guarantee is claimed.</p><p>Photography credited to TBench Solutions / Crowd Supply. Product images and diagrams are provided for information; confirm specifications and availability with TBench.</p></div></details></div></section>
 </main>
 <footer class="footer"><a class="brand" href="#" aria-label="TBench Solutions home"><img class="brand-logo" src="./assets/tbench-official-logo.svg?v=20261109" alt="TBench Solutions" width="2048" height="659" decoding="async"></a><span>UniJack · TBench Solutions</span><a href="tel:+494021979813">+49 40 21979813</a><a href="https://www.tbenchsolutions.com/" target="_blank" rel="noopener">Official TBench website</a></footer>
-<script type="module" src="./app.js?v=apple-3"></script>
+<script type="module" src="./app.js?v=apple-4"></script>
 </body></html>

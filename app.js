@@ -132,6 +132,8 @@ playInsertion.addEventListener('click',async()=>{
  loopRequested=true;syncInsertionLoop();
 });
 document.querySelectorAll('[data-inspect]').forEach(button=>button.addEventListener('click',()=>{
+ // In the scroll story each detail view is a stop: the button jumps to it.
+ if(story.on){pauseInsertionLoop(true);clearOverride();story.goTo(button.dataset.inspect);return;}
  pauseInsertionLoop(true);
  showPart(button.dataset.inspect==='underside'?'mercury':'base');button.setAttribute('aria-pressed','true');
  Object.assign(view,{focus:button.dataset.inspect==='underside'?'mercury':'base',inspection:button.dataset.inspect,insertion:1,active:true});

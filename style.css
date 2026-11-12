@@ -271,14 +271,11 @@ html:not([data-story=on]) .beat-stats{margin-top:var(--s-9)}
 html:not([data-story=on]) .routing-section{padding-top:0}
 
 /* =====================================================================
-   Scroll story: one pinned stage, ~2.2 screens on desktop, ~1.5 on phones.
-   Sections are in-flow spacers that set each text window; the text itself
-   is fixed in the band above the board and follows scroll position.
+   Scroll story: one pinned stage. Stop lengths live in motion.js (PACING);
+   story.js sizes the sections from them. Copy scrolls through a band above
+   the board; annotations on the model carry the story.
    ===================================================================== */
-[data-story=on]{
- --band-top:calc(var(--local) + clamp(16px,3svh,36px));
- --w-proof:25svh;--w-platform:55svh;--w-assembly:60svh;--w-routing:45svh;--w-stats:35svh
-}
+[data-story=on]{--band-top:calc(var(--local) + 18px)}
 [data-story=on] #product-stage{position:fixed;inset:var(--local) 0 0 0;z-index:0;pointer-events:none;opacity:var(--fade,1)}
 [data-story=on] #product-stage[data-visible=false]{visibility:hidden}
 [data-story=on] #product-stage .stage-canvas{inset:0;pointer-events:auto}
@@ -303,6 +300,31 @@ html:not([data-story=on]) .routing-section{padding-top:0}
 [data-story=on] :is(.scene-controls,.scene-footnote){transition:visibility 0s linear var(--dur-3)}
 [data-story=on][data-chapter=assembly] :is(.scene-controls,.scene-footnote){opacity:0;visibility:hidden;transition:opacity var(--dur-2) ease,visibility 0s linear var(--dur-2)}
 [data-story=on] .story-schematic{position:fixed}
+/* Hardware section: the board comes back beside (desktop) or above (phones) the cards. */
+[data-story=on] #product-stage[data-phase=hardware]{opacity:var(--hw-in,0)}
+[data-story=on] #product-stage[data-phase=hardware] .stage-canvas{pointer-events:none}
+@media (min-width:960px){[data-story=on] #product-stage[data-phase=hardware] .stage-canvas{-webkit-mask-image:linear-gradient(to right,#000 calc(var(--hw-right,56vw) - 96px),transparent var(--hw-right,56vw));mask-image:linear-gradient(to right,#000 calc(var(--hw-right,56vw) - 96px),transparent var(--hw-right,56vw))}}
+[data-story=on] #product-stage[data-phase=hardware] :is(.scene-controls,.scene-footnote){visibility:hidden}
+[data-story=on] #product-stage[data-phase=hardware]::before{display:none}
+.hw-panel{display:none}
+
+/* ---------- Annotations: dot, thin leader, short label ---------- */
+.story-annotations{position:fixed;inset:0;z-index:8;pointer-events:none;--anno-line:rgba(245,245,247,.62);--anno-dot:var(--c-cyan);--anno-tag:var(--c-on-dark);--anno-name:var(--c-on-dark-2);--anno-single:var(--c-on-dark)}
+.story-annotations[data-band=light]{--anno-line:rgba(29,29,31,.5);--anno-dot:var(--c-cyan-deep);--anno-tag:var(--c-on-light);--anno-name:var(--c-on-light-2);--anno-single:var(--c-on-light)}
+.anno-lines{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.anno-leader{fill:none;stroke:var(--anno-line);stroke-width:1;stroke-dasharray:1 1;vector-effect:non-scaling-stroke}
+.anno-dot{fill:var(--anno-dot)}
+.anno-ring{fill:none;stroke:var(--anno-dot);stroke-width:1}
+.anno-label{position:absolute;left:0;top:0;display:flex;flex-direction:column;gap:2px;white-space:nowrap;will-change:transform,opacity}
+.anno-label[data-side=left]{align-items:flex-end;text-align:right}
+.anno-tag{color:var(--anno-tag);font-size:12px;font-weight:600;line-height:1.25;letter-spacing:.08em;text-transform:uppercase}
+.anno-name{color:var(--anno-name);font-size:14px;line-height:1.3;letter-spacing:-.005em}
+.anno-label.is-single .anno-name{color:var(--anno-single);font-weight:600}
+.anno-caption{position:absolute;left:50%;top:0;display:flex;flex-direction:column;align-items:center;gap:2px;text-align:center;white-space:nowrap;opacity:0}
+.anno-caption .anno-name{color:var(--anno-single);font-weight:600}
+.anno-caption .anno-tag{color:var(--c-on-dark-3);font-weight:500}
+/* Reduced motion: stops appear whole, with a short opacity change only. */
+.story-annotations.is-stepped :is(.anno-label,.anno-caption,.anno-leader,.anno-dot,.anno-ring){transition:opacity 200ms ease!important}
 
 [data-story=on] :is(main>.hero,.beat-proof,#platform,.assembly-section,#routing){position:relative;z-index:1;pointer-events:none}
 [data-story=on] :is(.hero-copy,.hero-bottom)>*{pointer-events:auto}
@@ -313,17 +335,19 @@ html:not([data-story=on]) .routing-section{padding-top:0}
 [data-story=on] .hero-bottom>a{position:absolute;right:var(--gutter);bottom:30px;pointer-events:auto}
 
 /* Spacer heights set the windows. */
-[data-story=on] .beat-proof{height:var(--w-proof);margin-top:18svh}
-[data-story=on] .proof-strip.story-text>*{max-width:none;margin-inline:0}
-[data-story=on] #platform{max-width:none;height:var(--w-platform);padding:0}
-[data-story=on] .assembly-section{height:var(--w-assembly)}
+/* Section heights come from the timeline (story.js). The proof strip's four
+   labels are carried by the Assembled annotations, so it is visually hidden. */
+[data-story=on] .beat-proof{margin:0;overflow:hidden}
+[data-story=on] .proof-strip{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+[data-story=on] #platform{max-width:none;padding:0}
 [data-story=on] #routing{padding:0}
-[data-story=on] .beat-routing{height:var(--w-routing)}
-[data-story=on] .beat-stats{height:var(--w-stats)}
-/* Fixed text in the band. */
-[data-story=on] :is(.story-text,.assembly-copy){position:fixed;left:0;right:0;top:var(--band-top);z-index:2;max-width:none;margin:0;padding:0 var(--gutter);text-align:center;opacity:0;pointer-events:none;will-change:opacity,transform}
+/* Copy in the band: positioned by scroll, masked at the band's edges. */
+[data-story=on] :is(#platform,.beat-routing,.beat-stats) .story-text{position:fixed;left:0;right:0;top:var(--band-top);z-index:2;max-width:none;margin:0;padding:0 var(--gutter);text-align:center;pointer-events:none;transform:translate3d(0,-200vh,0);will-change:transform}
+[data-story=on] .assembly-copy{position:fixed;left:0;right:0;top:var(--band-top);bottom:0;z-index:2;max-width:none;margin:0;padding:0 var(--gutter);text-align:center;pointer-events:none}
+[data-story=on] .assembly-copy>:is(.eyebrow,.part-tabs,.part-text){transform:translate3d(0,-200vh,0);will-change:transform}
+[data-story=on] .assembly-copy>.eyebrow{display:block}
+[data-story=on] [data-live=true],[data-story=on] .story-text[data-live=true]>*{pointer-events:auto}
 [data-story=on] .story-text>*{max-width:var(--content);margin-inline:auto}
-[data-story=on] :is(.story-text,.assembly-copy)[data-live=true]>*{pointer-events:auto}
 [data-story=on] :is(#platform,.beat-routing) h2{font-size:clamp(2rem,1rem + 2.4vw,3rem)}
 [data-story=on] :is(#platform,.beat-routing) p{max-width:40rem;margin-inline:auto;font-size:var(--t-body);line-height:1.47}
 [data-story=on] .intro-grid{gap:var(--s-3)}
@@ -348,6 +372,14 @@ html:not([data-story=on]) .routing-section{padding-top:0}
 [data-story=on]:not([data-chapter=assembly]) :is(.assembly-stage .detail-views,.assembly-stage .assembly-note,.insertion-control,.assembly-copy>.source-note){opacity:0;visibility:hidden}
 [data-story=on][data-chapter=assembly] :is(.assembly-stage .detail-views,.assembly-stage .assembly-note,.insertion-control,.assembly-copy>.source-note){transition-delay:0s}
 [data-story=on] .routing-panel{margin:0 auto var(--section);width:calc(100% - var(--gutter)*2);pointer-events:auto}
+/* Hardware cards in one column beside the board (desktop). */
+@media (min-width:960px){
+ [data-story=on] .products-section .product-cards{grid-template-columns:1fr;width:min(40%,520px);max-width:none;margin:0 var(--gutter) 0 auto;gap:clamp(72px,10svh,120px);padding-block:clamp(24px,8svh,96px)}
+}
+/* Applications: the annotation leader draws in under each tag. */
+.application-number{position:relative}
+.application-number::after{content:'';position:absolute;left:0;bottom:calc(var(--s-6) - 10px);width:48px;height:1px;background:currentColor;opacity:.6;transform:scaleX(var(--line,1));transform-origin:0 50%}
+[data-story=on] .application-number::after{transform:scaleX(var(--line,0))}
 [data-story=on]:not([data-handoff=done])[data-schematic=ready] #routing .approved-routing-graphic{opacity:var(--handoff,0)}
 
 /* Wide desktop: the hero headline and the story headlines run on one line. */
@@ -358,10 +390,13 @@ html:not([data-story=on]) .routing-section{padding-top:0}
 }
 /* Assembly foot stacks below 1200px: views above, insertion below. */
 @media (max-width:1199px){
- [data-story=on] .assembly-copy .insertion-control{left:0;right:0;margin-inline:auto;bottom:26px;width:max-content;max-width:calc(100vw - var(--gutter)*2)}
- [data-story=on] .assembly-stage .detail-views{right:0;left:0;margin-inline:auto;width:max-content;max-width:calc(100vw - var(--gutter)*2);flex-wrap:nowrap;bottom:86px}
+ [data-story=on] .assembly-copy .insertion-control{left:0;right:0;margin-inline:auto;bottom:48px;width:max-content;max-width:calc(100vw - var(--gutter)*2)}
+ [data-story=on] .assembly-stage .detail-views{right:0;left:0;margin-inline:auto;width:max-content;max-width:calc(100vw - var(--gutter)*2);flex-wrap:nowrap;bottom:108px}
  [data-story=on] .assembly-stage .assembly-note{right:auto;left:var(--gutter);bottom:6px;text-align:left}
  [data-story=on] .assembly-copy>.source-note{left:auto;right:var(--gutter);max-width:46%;text-align:right}
+ /* The assembly chapter needs a taller foot: the board steps up. */
+ [data-story=on] #product-stage .stage-canvas{transition:transform 260ms var(--ease-out)}
+ [data-story=on][data-chapter=assembly] #product-stage .stage-canvas{transform:translateY(-48px)}
 }
 
 /* =====================================================================
@@ -383,7 +418,10 @@ html:not([data-story=on]) .routing-section{padding-top:0}
  .hero-actions{gap:var(--s-1) var(--s-4)}
  .hero .button{padding:0 18px}
 
- [data-story=on]{--w-proof:10svh;--w-platform:30svh;--w-assembly:38svh;--w-routing:26svh;--w-stats:22svh}
+ /* Hardware: the board rides in a light panel above the cards, which slide under it. */
+ [data-story=on] .products-section .product-cards{padding-top:40svh}
+ [data-story=on] #product-stage[data-phase=hardware] .hw-panel{display:block;position:absolute;left:0;right:0;top:0;background:var(--c-light);box-shadow:0 1px 0 var(--c-line-light),0 12px 24px -12px rgba(0,0,0,.12)}
+ .anno-name{font-size:13px}
  [data-story=on] .hero-bottom{position:static;height:auto;margin-top:var(--s-2);flex-direction:column;gap:0}
  [data-story=on] .hero-bottom>a{min-height:32px}
  [data-story=on] .hero-bottom>:is(span,a){position:static;font-size:var(--t-caption)}
@@ -401,11 +439,8 @@ html:not([data-story=on]) .routing-section{padding-top:0}
  [data-story=on] .routing-stats span{font-size:var(--t-body);margin-top:var(--s-1)}
  [data-story=on] .assembly-copy .part-tabs{margin-bottom:var(--s-4)}
  [data-story=on] .assembly-copy .part-text p{font-size:15px;line-height:1.45}
- [data-story=on] .assembly-stage .detail-views{bottom:146px}
+ [data-story=on] .assembly-stage .detail-views{bottom:168px}
  [data-story=on] .routing-stats{flex-direction:row;justify-content:center;align-items:flex-end;gap:var(--s-6)}
- /* The assembly chapter needs a taller foot: the board steps up. */
- [data-story=on] #product-stage .stage-canvas{transition:transform 260ms var(--ease-out)}
- [data-story=on][data-chapter=assembly] #product-stage .stage-canvas{transform:translateY(-48px)}
 }
 @media (max-width:480px){
  .segmented button{padding:0 12px;font-size:13px}
@@ -414,6 +449,8 @@ html:not([data-story=on]) .routing-section{padding-top:0}
  .part-tabs button{padding:0 12px;font-size:13px}
  [data-story=on] .assembly-copy .insertion-control{width:calc(100vw - var(--gutter)*2)}
  [data-story=on] .assembly-copy>.source-note{display:none}
+ [data-story=on] .assembly-copy .insertion-control{bottom:26px}
+ [data-story=on] .assembly-stage .detail-views{bottom:146px}
 }
 
 /* ---------- Reduced motion ---------- */
