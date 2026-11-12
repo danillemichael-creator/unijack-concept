@@ -29,18 +29,108 @@ export function mercuryInsertionPose(amount,edgeX=-17.5,edgeY=.7){
   y:14*(1-approach)+edgeY*(1-Math.cos(angle))-edgeX*Math.sin(angle)};
 }
 
-// Scroll story timeline. Every value is a fraction of story progress (0–1),
-// so the scene, labels and schematic all read from one clock and reverse
-// cleanly when the visitor scrolls back up.
-export const STORY = {
- yaw:[0,.15],
- // The explode reads as one movement: all parts start within a few percent.
- peri:[.15,.39], mercury:[.165,.405], components:[.18,.42], pull:[.15,.45],
- hold:[.45,.55],
- leave:[.55,.66], settle:[.55,.65], topDown:[.56,.72],
- dim:[.70,.84], schematic:[.72,.82],
- draw:{route:[.76,.87], cross:[.79,.9], loopback:[.82,.93], fanout:[.85,.96], logic:[.88,.99]}
+// =====================================================================
+// STORY PACING — tune the scroll story here.
+// Every length is in screens of scroll (1 = one viewport height).
+//   move = the board or camera moves to the stop
+//   draw = the stop's annotations draw in (nothing else moves)
+//   hold = nothing moves, so the annotations can be read
+// Phones use the `phone` column below 960px wide.
+// =====================================================================
+export const PACING = {
+ desktop: {
+  assembled: {move:.35, draw:.15, hold:.40},
+  exploded:  {move:.50, draw:.15, hold:.45},
+  ports:     {move:.35, draw:.15, hold:.40},
+  chips:     {move:.30, draw:.15, hold:.40},
+  underside: {move:.40, draw:.15, hold:.40},
+  insertion: {move:.25,                                    // camera to the socket
+              separate:{move:.30, draw:.10, hold:.30},     // Mercury lifts out
+              connect: {move:.30, draw:.10, hold:.30}},    // Mercury seats again
+  routing:   {move:.35, draw:.15, hold:.35},
+  schematic: {frame:{draw:.25, hold:.15},                  // outline and headings
+              group:{draw:.18, hold:.20},                  // each of the five colour groups
+              finalHold:.45},                              // finished drawing
+  handoff:   .35                                           // drawing settles into the explorer
+ },
+ phone: {
+  assembled: {move:.40, draw:.15, hold:.45},
+  exploded:  {move:.45, draw:.15, hold:.50},
+  ports:     {move:.30, draw:.15, hold:.45},
+  chips:     {move:.30, draw:.15, hold:.45},
+  underside: {move:.35, draw:.15, hold:.45},
+  insertion: {move:.20,
+              separate:{move:.30, draw:.10, hold:.35},
+              connect: {move:.30, draw:.10, hold:.40}},
+  routing:   {move:.30, draw:.15, hold:.40},
+  schematic: {frame:{draw:.25, hold:.15},
+              group:{draw:.18, hold:.25},
+              finalHold:.50},
+  handoff:   .30
+ }
 };
+
+// Board state at the end of each stop's move. Values carry forward.
+const START = {cam:'hero', hero:1, explode:0, insertion:1, flip:0, leave:0, dim:0};
+const TARGET = {
+ assembled:{cam:'heroYaw', hero:0}, exploded:{cam:'exploded', explode:1}, ports:{cam:'ports', explode:0},
+ chips:{cam:'chips'}, underside:{cam:'underside', flip:1}, insertion:{cam:'insertion', flip:0},
+ separate:{insertion:0}, connected:{insertion:1}, routing:{cam:'topDown', leave:1}, frame:{dim:1}
+};
+export const SCHEMATIC_GROUPS = ['route','cross','loopback','fanout','logic'];
+
+// Flattens PACING into one list of stops with absolute positions (screens).
+export function buildTimeline(pacing){
+ const list = [];
+ const add = (name, {move=0, draw=0, hold=0}, extra = {}) => list.push({name, move, draw, hold, ...extra});
+ for (const n of ['assembled','exploded','ports','chips','underside']) add(n, pacing[n]);
+ add('insertion', {move:pacing.insertion.move});
+ add('separate', pacing.insertion.separate);
+ add('connected', pacing.insertion.connect);
+ add('routing', pacing.routing);
+ add('frame', pacing.schematic.frame, {schematic:true});
+ for (const g of SCHEMATIC_GROUPS) add('group-' + g, pacing.schematic.group, {schematic:true, group:g});
+ add('final', {hold:pacing.schematic.finalHold}, {schematic:true});
+ let at = 0, state = {...START};
+ for (const stop of list) {
+  stop.from = state; state = {...state, ...(TARGET[stop.name] || {})}; stop.to = state;
+  stop.start = at; stop.moveEnd = at + stop.move; stop.drawEnd = stop.moveEnd + stop.draw; stop.end = at = stop.drawEnd + stop.hold;
+ }
+ const byName = Object.fromEntries(list.map(s => [s.name, s]));
+ return {stops:list, byName, story:at, handoff:pacing.handoff, end:at + pacing.handoff,
+  // Hardware section: a separate stretch after the explorer (stage hidden in between).
+  hardware:{start:at + pacing.handoff + 2, stops:['hw-all','hw-base','hw-mercury','hw-peri','hw-out']}};
+}
+export function stopAt(tl, s){
+ const list = tl.stops;
+ for (let i = list.length - 1; i >= 0; i--) if (s >= list[i].start) return list[i];
+ return list[0];
+}
+// Board pose at story position s (screens).
+export function poseAt(tl, s){
+ const hw = tl.hardware;
+ if (s >= hw.start - 1) {
+  const x = Math.max(0, Math.min(hw.stops.length - 1, s - hw.start)), i = Math.min(hw.stops.length - 2, Math.floor(x));
+  return {phase:'hardware', camA:hw.stops[i], camB:hw.stops[i+1], camT:easeInOut(x - i), hero:0, explode:{peri:0,mercury:0,components:0}, insertion:1, flip:0, leave:0, dim:0};
+ }
+ const stop = stopAt(tl, s), t = stop.move ? clamp01((s - stop.start) / stop.move) : 1, e = easeInOut(t);
+ const a = stop.from, b = stop.to, mix = k => a[k] + (b[k] - a[k]) * e;
+ // The explode reads as one movement: all parts start within a few percent.
+ const ex = w => a.explode + (b.explode - a.explode) * easeInOut(span(t, w));
+ const dim = stop.name === 'frame' ? easeInOut(clamp01((s - stop.moveEnd) / (stop.draw || 1))) : stop.schematic ? 1 : a.dim;
+ return {phase:'story', stop:stop.name, camA:a.cam, camB:b.cam, camT:e, hero:mix('hero'),
+  explode:{peri:ex([0,.8]), mercury:ex([.06,.86]), components:ex([.12,.92])},
+  insertion:mix('insertion'), flip:mix('flip'), leave:mix('leave'), dim};
+}
+// Draw-in (0–1) and exit (0–1) of a stop's annotations at position s.
+export function annotationState(tl, stop, s){
+ const i = tl.stops.indexOf(stop), next = tl.stops[i + 1];
+ const drawFrom = stop.draw ? stop.moveEnd : Math.max(stop.start, stop.moveEnd - .1), drawTo = stop.draw ? stop.drawEnd : stop.moveEnd;
+ const draw = clamp01((s - drawFrom) / Math.max(.001, drawTo - drawFrom));
+ const exitFrom = next ? next.start : tl.story + .05, exit = clamp01((s - exitFrom) / .06);
+ return {draw, exit, visible: s >= drawFrom && exit < 1};
+}
+
 export const clamp01=value=>Math.min(1,Math.max(0,value));
 export const span=(progress,[from,to])=>clamp01((progress-from)/(to-from));
 
