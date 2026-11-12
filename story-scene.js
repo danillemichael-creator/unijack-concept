@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { buildDetailedModel } from './detailed-model.js';
 import { setupStudioEnvironment } from './material-finish.js';
-import { mercuryInsertionPose, STORY, span, easeInOut, easeOut, frameDelta } from './motion.js';
+import { mercuryInsertionPose, poseAt, easeInOut, easeOut, frameDelta } from './motion.js';
 
 // One renderer for the whole UniJack story. Story progress (0–1) sets every
 // pose; the assembly controls can temporarily override it. Frames are drawn
@@ -11,6 +11,12 @@ const V = (x,y,z)=>new THREE.Vector3(x,y,z);
 const EXPLODE = {mercury:V(0,46,-4), peri:V(30,20,0), components:12};
 // Exits are lateral so they read as leaving frame in the top-down view.
 const LEAVE = {mercury:V(-190,40,-150), peri:V(200,30,40)};
+// Underside stop: Mercury lifts clear of the socket and turns its underside to the camera.
+const FLIP = {lift:V(0,74,26), angle:-2.4};
+// Annotation anchors: a point inside each part's resting bounds (fractions of x, y, z).
+const ANCHORS = {base:['base',[.30,1,.66]], baseBack:['base',[.2,1,.14]], mercury:['mercury',[.5,1,.5]], peri:['peri',[.5,1,.42]],
+ ports:['base',[.05,.8,.55]], aurix:['mercury',[.56,.5,.52]], underside:['mercury',[.5,0,.45]],
+ socket:['base',[.25,.55,.86]], erau:['base',[.56,.35,.42]]};
 const BOARD_LAYER = /^(FR4 cut edge|Teal solder mask|Photographic solder mask and silkscreen)$/;
 const lerp = THREE.MathUtils.lerp;
 function lerpAngle(a,b,t){let d=(b-a)%(Math.PI*2);if(d>Math.PI)d-=Math.PI*2;if(d<-Math.PI)d+=Math.PI*2;return a+d*t;}
@@ -25,7 +31,8 @@ function contactShadow(){
  mesh.rotation.x=-Math.PI/2;mesh.renderOrder=-1;return mesh;
 }
 
-export async function createStoryScene(host,{lite=false,instant=false,onFrame=()=>{},shouldStop=()=>false}={}){
+export async function createStoryScene(host,{lite=false,instant=false,timeline=null,onFrame=()=>{},shouldStop=()=>false}={}){
+ let tl=timeline;
  // shouldStop() lets the page give up (and show the still photo) between the
  // heavy steps instead of blocking until the board is finished.
  const stopIfLate=()=>{if(shouldStop())throw new Error('cancelled');};
@@ -70,6 +77,15 @@ export async function createStoryScene(host,{lite=false,instant=false,onFrame=()
  applyParts(rest.mercury.clone().add(EXPLODE.mercury),rest.peri.clone().add(EXPLODE.peri),lite?0:EXPLODE.components,-.1);
  boxes.exploded=new THREE.Box3().setFromObject(root);
  applyParts(rest.mercury,rest.peri,0,0);
+ // Local anchor points, taken at rest so they follow each part as it moves.
+ const anchorLocal={};
+ for(const [name,[part,f]] of Object.entries(ANCHORS)){const b=boxes[part],obj={base,mercury,peri}[part];
+  const w=V(lerp(b.min.x,b.max.x,f[0]),lerp(b.min.y,b.max.y,f[1]),lerp(b.min.z,b.max.z,f[2]));anchorLocal[name]=[obj,obj.worldToLocal(w)];}
+ mercury.position.copy(rest.mercury).add(FLIP.lift);mercury.rotation.z=FLIP.angle;root.updateMatrixWorld(true);
+ boxes.flipped=new THREE.Box3().setFromObject(mercury);
+ {const ins=mercuryInsertionPose(0);mercury.position.copy(rest.mercury);mercury.position.x+=ins.x;mercury.position.y+=ins.y;mercury.rotation.z=ins.angle;root.updateMatrixWorld(true);
+  boxes.insertion=new THREE.Box3().setFromObject(mercury).union(boxes.mercury);}
+ applyParts(rest.mercury,rest.peri,0,0);
  const footprint=boxes.all.getSize(new THREE.Vector3());
  shadow.scale.set(footprint.x*1.25,footprint.z*1.7,1);shadow.position.set(boxes.all.getCenter(new THREE.Vector3()).x,boxes.all.min.y-.02,0);
 
@@ -86,103 +102,115 @@ export async function createStoryScene(host,{lite=false,instant=false,onFrame=()
   return {target:center,az,el,distance};
  }
  const az0=Math.atan2(-120,174),el0=Math.asin(147/Math.hypot(120,147,174)),yaw=THREE.MathUtils.degToRad(25);
+ const dirKey=(box,d,cw,ch)=>fit(box,Math.atan2(d.x,d.z),Math.asin(d.y/d.length()),cw,ch);
+ const mmBox=(a,b)=>new THREE.Box3(a.clone().multiplyScalar(MM),b.clone().multiplyScalar(MM));
  let keys={};
  // The board is the hero: ~80% of the width (max ~1200px) on desktop, nearly
  // full width on phones, inside the region below the text band (frame).
  const frameBox={top:0,bottom:0,hero:0};let steadyDy=0,regionRatio=1;
+ // Hardware section: the board sits in its own region (left column on desktop, top panel on phones).
+ const hwBox={x:0,y:0,w:0,h:0};let hwDx=0,hwDy=0;
  function layoutKeys(){
   const W=canvas.clientWidth||1,H=canvas.clientHeight||1,region=Math.max(H*.3,H-frameBox.top-frameBox.bottom);
   const cw=lite?.94:Math.min(.8,1200/W),ch=region/H*.96;
   steadyDy=frameBox.top+region/2-H/2;regionRatio=Math.min(1,region/H);
+  const dc=lite?.92:.72; // close-ups
   keys={
-   k0:fit(boxes.all,az0,el0,cw,ch),k0b:fit(boxes.all,az0+yaw,el0-.03,cw,ch),
-   k1:fit(boxes.exploded,az0+yaw+.16,el0+.07,cw,ch),
-   k3:fit(boxes.base,0,THREE.MathUtils.degToRad(88.5),cw*.78,ch*.86)
+   hero:fit(boxes.all,az0,el0,cw,ch),heroYaw:fit(boxes.all,az0+yaw,el0-.03,cw,ch),
+   exploded:fit(boxes.exploded,az0+yaw+.16,el0+.07,cw,ch),
+   ports:dirKey(mmBox(V(-87,0,-37),V(-48,16,40)),V(-61,48,69),dc,regionRatio*.85),
+   chips:dirKey(mmBox(V(-30,0,-32),V(44,9,34)),V(-48,76,90),dc,regionRatio*.85),
+   underside:fit(boxes.flipped,az0+yaw,el0+.04,lite?.6:.6,regionRatio*(lite?.6:.82)),
+   insertion:fit(boxes.insertion,az0+.5,.58,lite?.62:.66,regionRatio*(lite?.62:.82)),
+   topDown:fit(boxes.base,0,THREE.MathUtils.degToRad(88.5),cw*.78,ch*.86)
   };
+  if(hwBox.w>0){
+   const hw=hwBox.w/W*(lite?.94:.86),hh=hwBox.h/H*.8;hwDx=hwBox.x+hwBox.w/2-W/2;hwDy=hwBox.y+hwBox.h/2-H/2;
+   Object.assign(keys,{'hw-all':fit(boxes.all,az0+yaw,el0-.03,hw,hh),'hw-out':fit(boxes.all,az0,el0,hw,hh),
+    'hw-base':fit(boxes.base,az0+yaw+.12,el0+.02,hw*1.08,hh*1.08),
+    'hw-mercury':fit(boxes.mercury,az0+yaw+.2,el0+.12,hw*.42,hh*.42),
+    'hw-peri':fit(boxes.peri,az0+yaw-.18,el0+.06,hw*.42,hh*.42)});
+  }
  }
- // Vertical framing without changing perspective: shift the projection.
- let appliedDy=NaN;
- function applyOffset(dy){
-  if(Math.abs(dy-appliedDy)<.25)return;appliedDy=dy;
-  const W=canvas.clientWidth||1,H=canvas.clientHeight||1;camera.setViewOffset(W,H,0,-dy,W,H);
+ // Framing without changing perspective: shift the projection.
+ let appliedDx=NaN,appliedDy=NaN;
+ function applyOffset(dy,dx=0){
+  if(Math.abs(dy-appliedDy)<.25&&Math.abs(dx-appliedDx)<.25)return;appliedDy=dy;appliedDx=dx;
+  const W=canvas.clientWidth||1,H=canvas.clientHeight||1;camera.setViewOffset(W,H,-dx,-dy,W,H);
  }
  function blendCam(a,b,t){return {target:a.target.clone().lerp(b.target,t),az:lerpAngle(a.az,b.az,t),el:lerp(a.el,b.el,t),distance:lerp(a.distance,b.distance,t)};}
- function storyCamera(p){
-  if(p<=STORY.yaw[1])return blendCam(keys.k0,keys.k0b,easeInOut(span(p,STORY.yaw)));
-  if(p<=STORY.pull[1])return blendCam(keys.k0b,keys.k1,easeInOut(span(p,STORY.pull)));
-  if(lite)return keys.k1;
-  return blendCam(keys.k1,keys.k3,easeInOut(span(p,STORY.topDown)));
- }
- // Assembly-control views reuse the reviewed framing of the previous explorer.
+ // Assembly-control views (part tabs, insertion slider) reuse the explorer framing.
  function overrideCamera(o){
-  if(o.inspection==='ports'||o.inspection==='chips'){
-   const box=o.inspection==='ports'?new THREE.Box3(V(-87,0,-37),V(-48,16,40)):new THREE.Box3(V(-30,0,-32),V(44,9,34));
-   box.min.multiplyScalar(MM);box.max.multiplyScalar(MM);
-   const d=o.inspection==='ports'?V(-61,48,69):V(-48,76,90);
-   return fit(box,Math.atan2(d.x,d.z),Math.asin(d.y/d.length()),.65,.65*regionRatio);
-  }
-  if(o.inspection==='underside'){const d=V(-15,-95,65);return fit(boxes.mercury,Math.atan2(d.x,d.z),Math.asin(d.y/d.length()),.68,.68*regionRatio);}
+  if(o.inspection==='ports'||o.inspection==='chips')return keys[o.inspection];
+  if(o.inspection==='underside')return keys.underside;
   const c=o.focus==='all'?.7:.74;return fit(boxes[o.focus]||boxes.all,az0+yaw,el0,c,c*regionRatio);
  }
 
  const state={p:0,target:0,override:null,weight:0,weightTarget:0,dragYaw:0,dragPitch:0,yawVelocity:0,idle:!lite&&!instant,paused:false,active:true,time:0,intro:instant?1:0,introStart:0};
  const INTRO_MS=800;
  let frame=0,last=0,shadowDirty=true;
- const out={labels:[{name:'UniJack',x:0,y:0,o:0},{name:'Mercury',x:0,y:0,o:0},{name:'PeriBoard',x:0,y:0,o:0}],baseRect:null,progress:0};
- const tmp=new THREE.Vector3(),mTarget=new THREE.Vector3(),pTarget=new THREE.Vector3();
+ const out={labels:[],anchors:{},bounds:null,baseRect:null,progress:0,phase:'story'};
+ for(const name of Object.keys(ANCHORS))out.anchors[name]={x:0,y:0,on:false};
+ const tmp=new THREE.Vector3(),mTarget=new THREE.Vector3(),pTarget=new THREE.Vector3(),corner=new THREE.Vector3();
+ const partBox=new THREE.Box3();
+ const restPose={phase:'story',camA:'hero',camB:'hero',camT:0,hero:1,explode:{peri:0,mercury:0,components:0},insertion:1,flip:0,leave:0,dim:0};
 
  function pose(){
-  const p=state.p,o=state.override;
-  const periT=easeInOut(span(p,STORY.peri)),mercT=easeInOut(span(p,STORY.mercury));
-  const compT=lite?0:easeInOut(span(p,STORY.components))*(1-easeInOut(span(p,STORY.settle)));
-  const leaveT=lite?0:easeInOut(span(p,STORY.leave));
-  mTarget.copy(rest.mercury).addScaledVector(EXPLODE.mercury,mercT).addScaledVector(LEAVE.mercury,leaveT);
+  const P=tl?poseAt(tl,state.p):restPose,o=state.override,w=state.weight;
+  const periT=P.explode.peri,mercT=P.explode.mercury,compT=lite?0:P.explode.components,leaveT=P.leave,flipT=easeInOut(P.flip);
+  const ins=mercuryInsertionPose(P.insertion);
+  mTarget.copy(rest.mercury).addScaledVector(EXPLODE.mercury,mercT).addScaledVector(LEAVE.mercury,leaveT).addScaledVector(FLIP.lift,flipT);
+  mTarget.x+=ins.x;mTarget.y+=ins.y;
   pTarget.copy(rest.peri).addScaledVector(EXPLODE.peri,periT).addScaledVector(LEAVE.peri,leaveT);
-  let tilt=-.1*mercT,lift=EXPLODE.components*compT;
-  let cam=storyCamera(p);
-  const w=state.weight;
-  if(o&&w>0){
-   const ins=mercuryInsertionPose(o.insertion??1);
-   const om=rest.mercury.clone();om.x+=ins.x;om.y+=ins.y;
-   mTarget.lerp(om,w);pTarget.lerp(rest.peri,w);tilt=lerp(tilt,ins.angle,w);lift=lerp(lift,0,w);
+  let tilt=-.1*mercT+ins.angle+FLIP.angle*flipT,lift=EXPLODE.components*compT;
+  const hw=P.phase==='hardware';
+  let cam=blendCam(keys[P.camA]||keys.hero,keys[P.camB]||keys.hero,P.camT);
+  if(o&&w>0&&!hw){
+   const oi=mercuryInsertionPose(o.insertion??1);
+   const om=rest.mercury.clone();om.x+=oi.x;om.y+=oi.y;
+   mTarget.lerp(om,w);pTarget.lerp(rest.peri,w);tilt=lerp(tilt,oi.angle,w);lift=lerp(lift,0,w);
    cam=blendCam(cam,overrideCamera(o),easeInOut(w));
   }
-  const showAll=!o||o.focus==='all'||w<.02;
+  const showAll=hw||!o||o.focus==='all'||w<.02;
   for(const [name,part] of [['base',base],['mercury',mercury],['peri',peri]])part.visible=showAll||o.focus===name;
   if(!mercury.position.equals(mTarget)||!peri.position.equals(pTarget)||components.position.y!==lift||mercury.rotation.z!==tilt)shadowDirty=true;
   mercury.position.copy(mTarget);peri.position.copy(pTarget);components.position.y=lift;mercury.rotation.z=tilt;
-  shadow.material.opacity=(1-span(p,STORY.topDown))*.9;shadow.visible=shadow.material.opacity>.01&&showAll;
+  shadow.material.opacity=(1-leaveT)*.9;shadow.visible=shadow.material.opacity>.01&&showAll;
   // Camera: story key + drag offset + a small idle drift at the top of the page.
-  const idle=state.idle&&!state.paused?Math.sin(state.time*.32)*.1*(1-span(p,[0,.08])):0;
+  const idle=state.idle&&!state.paused&&!hw?Math.sin(state.time*.32)*.1*P.hero:0;
   const el=THREE.MathUtils.clamp(cam.el+state.dragPitch,-.2,1.545);
   const az=cam.az+state.dragYaw+idle;
   // Reveal: the board rises and scales up into place; at the top of the page
   // it sits a little lower and lifts as the hero text leaves.
   const e=easeOut(state.intro),Hc=canvas.clientHeight||1;
-  const heroT=1-easeInOut(span(p,STORY.yaw));
+  const heroT=P.hero;
   const heroDrop=Math.max(0,frameBox.hero-frameBox.top)*.62*heroT;
-  applyOffset(steadyDy+heroDrop+Hc*.14*(1-e));
-  const distance=cam.distance*(1+.32*(1-e)+(frameBox.hero>frameBox.top?.18*heroT:0));
+  if(hw)applyOffset(hwDy+Hc*.14*(1-e),hwDx);else applyOffset(steadyDy+heroDrop+Hc*.14*(1-e));
+  const distance=cam.distance*(1+.32*(1-e)+(!hw&&frameBox.hero>frameBox.top?.18*heroT:0));
   camera.position.set(Math.sin(az)*Math.cos(el),Math.sin(el),Math.cos(az)*Math.cos(el)).multiplyScalar(distance).add(cam.target);
   camera.up.set(0,1,0);camera.lookAt(cam.target);
   const explodeT=Math.max(periT,mercT);
   rim.intensity=.5+1.4*explodeT*(1-leaveT);
-  renderer.toneMappingExposure=.92-.5*span(p,STORY.dim);
-  // Leader-label anchors, in canvas pixels.
-  const W=canvas.clientWidth,H=canvas.clientHeight;camera.updateMatrixWorld();
-  const labelFade=explodeT*(1-Math.max(leaveT,span(p,[STORY.hold[1],STORY.leave[0]+.04])))*(1-w);
-  [[base,boxes.base,0],[mercury,boxes.mercury,1],[peri,boxes.peri,2]].forEach(([part,box,i])=>{
-   const c=box.getCenter(tmp);c.y=box.max.y;
-   if(i>0){c.sub(i===1?rest.mercury.clone().multiplyScalar(MM):rest.peri.clone().multiplyScalar(MM)).add(part.position.clone().multiplyScalar(MM));c.y+=.25;}
-   else c.y+=lift*MM+.1;
-   c.project(camera);const label=out.labels[i];label.x=(c.x*.5+.5)*W;label.y=(-c.y*.5+.5)*H;label.o=labelFade*(i===0?span(p,STORY.components):1);
-  });
-  out.progress=p;out.intro=e;
+  renderer.toneMappingExposure=.92-.5*P.dim;
+  // Annotation anchors and the board's on-screen bounds, in canvas pixels.
+  const W=canvas.clientWidth,H=canvas.clientHeight;camera.updateMatrixWorld();root.updateMatrixWorld(true);
+  for(const [name,[obj,local]] of Object.entries(anchorLocal)){
+   tmp.copy(local);obj.localToWorld(tmp);tmp.project(camera);
+   const a=out.anchors[name];a.x=(tmp.x*.5+.5)*W;a.y=(-tmp.y*.5+.5)*H;a.on=obj.visible&&tmp.z<1;
+  }
+  let minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9;
+  for(const part of [base,mercury,peri]){if(!part.visible||(part!==base&&leaveT>.5))continue;
+   partBox.setFromObject(part);
+   for(let k=0;k<8;k++){corner.set(k&1?partBox.max.x:partBox.min.x,k&2?partBox.max.y:partBox.min.y,k&4?partBox.max.z:partBox.min.z).project(camera);
+    const sx=(corner.x*.5+.5)*W,sy=(-corner.y*.5+.5)*H;minX=Math.min(minX,sx);maxX=Math.max(maxX,sx);minY=Math.min(minY,sy);maxY=Math.max(maxY,sy);}
+  }
+  out.bounds={left:minX,right:maxX,top:minY,bottom:maxY};
+  out.progress=state.p;out.intro=e;out.phase=P.phase;out.stop=P.stop;
  }
  function baseRectAtTopDown(){
   // Where the base board lands on screen in the top-down key: the schematic
   // overlay is registered to this rectangle.
-  const saved=camera.position.clone(),k=keys.k3,b=boxes.base;applyOffset(steadyDy);
+  const saved=camera.position.clone(),k=keys.topDown,b=boxes.base;applyOffset(steadyDy);
   camera.position.set(Math.sin(k.az)*Math.cos(k.el),Math.sin(k.el),Math.cos(k.az)*Math.cos(k.el)).multiplyScalar(k.distance).add(k.target);camera.lookAt(k.target);camera.updateMatrixWorld();
   let minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9;const W=canvas.clientWidth,H=canvas.clientHeight;
   for(const x of [b.min.x,b.max.x])for(const z of [b.min.z,b.max.z]){tmp.set(x,b.max.y,z).project(camera);const sx=(tmp.x*.5+.5)*W,sy=(-tmp.y*.5+.5)*H;minX=Math.min(minX,sx);maxX=Math.max(maxX,sx);minY=Math.min(minY,sy);maxY=Math.max(maxY,sy);}
@@ -238,7 +266,8 @@ export async function createStoryScene(host,{lite=false,instant=false,onFrame=()
  // top-down poses once so no shader or shadow pass compiles mid-scroll.
  performance.mark('uj:first-render');
  if(shouldStop()){resizeObserver.disconnect();disposeEnvironment();renderer.dispose();canvas.remove();throw new Error('cancelled');}
- if(!instant){for(const p of [.42,.8,0]){state.p=state.target=p;shadowDirty=true;render();}}
+ if(tl){const b=tl.byName,warm=instant?[0]:[b.exploded.end-.01,b.underside.end-.01,b.connected.start+.15,b.frame.end,tl.hardware.start+2,0];
+  for(const p of warm){state.p=state.target=p;shadowDirty=true;render();}}
  host.dataset.webgl='ready';host.classList.add('ready');
  canvas.dataset.textures='preview';
 
@@ -270,7 +299,17 @@ export async function createStoryScene(host,{lite=false,instant=false,onFrame=()
 
  return {
   canvas,
-  setProgress(value){const v=Math.min(1,Math.max(0,value));if(v!==state.target)lastInput=performance.now();state.target=v;if(instant)state.p=state.target;request();},
+  setProgress(value,{jump=false}={}){const v=Math.max(0,value);if(v!==state.target)lastInput=performance.now();state.target=v;if(instant||jump)state.p=state.target;request();},
+  // Jump straight to a position under a short crossfade (shortcuts, reduced motion).
+  crossfadeTo(value,ms=200){
+   render();const snap=document.createElement('canvas');snap.width=canvas.width;snap.height=canvas.height;
+   snap.getContext('2d').drawImage(canvas,0,0);snap.className='stage-webgl-snap';snap.setAttribute('aria-hidden','true');
+   snap.style.cssText=`position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:${getComputedStyle(canvas).opacity};transition:opacity ${ms}ms cubic-bezier(.23,1,.32,1)`;
+   canvas.after(snap);state.p=state.target=Math.max(0,value);lastInput=performance.now();render();
+   requestAnimationFrame(()=>requestAnimationFrame(()=>{snap.style.opacity='0';setTimeout(()=>snap.remove(),ms+150);}));
+  },
+  setTimeline(value){tl=value;request();},
+  setHardwareFrame(x,y,w,h){if(hwBox.x===x&&hwBox.y===y&&hwBox.w===w&&hwBox.h===h)return;Object.assign(hwBox,{x,y,w,h});layoutKeys();request();},
   setOverride(o){
    if(o){state.override={focus:'all',inspection:'overview',insertion:1,...o};state.weightTarget=1;}
    else state.weightTarget=0;
