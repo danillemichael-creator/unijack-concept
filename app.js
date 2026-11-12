@@ -50,18 +50,21 @@ function dockTo(where){
 function applyView(){
  const scene=story.scene;if(!scene)return;
  if(!story.on&&view.active)dockTo('assembly');
+ if(view.active&&!overrideStop)overrideStop=story.stop;
  scene.setOverride(view.active?{focus:view.focus,inspection:view.inspection,insertion:view.insertion}:null);
 }
 function clearOverride(){
  if(!view.active)return;
- Object.assign(view,{focus:'all',inspection:'overview',insertion:1,active:false});
+ Object.assign(view,{focus:'all',inspection:'overview',insertion:1,active:false});overrideStop='';
  loopRequested=false;loopNeedsReset=false;
  document.querySelectorAll('[data-inspect]').forEach(b=>b.setAttribute('aria-pressed','false'));
  showPart('all');insertion.value=100;insertionValue.textContent='Connected';
  story.scene?.setOverride(null);syncInsertionLoop();
 }
-// Scrolling on past the assembly hands the board back to the story.
-story.onProgress(p=>{if(story.on&&view.active&&!story.inAssemblyRange(p))clearOverride();});
+// A part or insertion view belongs to the stop it was chosen at: scrolling on
+// to another stop hands the board back to the story.
+let overrideStop='';
+story.onProgress(()=>{if(story.on&&view.active&&overrideStop&&story.stop!==overrideStop)clearOverride();});
 
 function setInsertion(value){
  insertion.value=Math.round(value*100);
@@ -113,6 +116,8 @@ assemblyElement.addEventListener('pointerdown',event=>{if(event.target.tagName==
 
 document.querySelectorAll('[data-part]').forEach(button=>button.addEventListener('click',()=>{
  pauseInsertionLoop(true);showPart(button.dataset.part);insertion.value=100;insertionValue.textContent='Connected';
+ // Phones: copy and board take turns, so a part tab cuts to the Exploded stop to show the part.
+ if(story.on&&story.compact){overrideStop='exploded';story.goTo('exploded');}
  Object.assign(view,{focus:button.dataset.part,inspection:'overview',insertion:1,active:button.dataset.part!=='all'||!story.on});
  if(!view.active)story.scene?.setOverride(null);else whenScene(applyView);syncInsertionLoop();
 }));

@@ -25,9 +25,16 @@ const CALLOUTS = {
 // Shortcut buttons → the stop they jump to.
 const SHORTCUT = {assembled:'assembled', exploded:'exploded', routing:'routing', ports:'ports', chips:'chips', underside:'underside', insertion:'separate'};
 const ASSEMBLY_STOPS = new Set(['ports','chips','underside','insertion','separate','connected']);
+const INSERTION_STOPS = new Set(['insertion','separate','connected']);
 
 let tl = buildTimeline(compact.matches ? PACING.phone : PACING.desktop);
-let scene = null, lastFrame = null, sceneLoading = null, vh = innerHeight, vw = innerWidth;
+// One screen = the small viewport height (100svh), so Safari's collapsing
+// address bar and toolbar never rescale the story.
+const probe = document.createElement('div');
+probe.style.cssText = 'position:fixed;left:0;top:0;width:0;height:100svh;visibility:hidden;pointer-events:none';
+document.documentElement.append(probe);
+const screenH = () => probe.offsetHeight || innerHeight;
+let scene = null, lastFrame = null, sceneLoading = null, vh = screenH(), vw = innerWidth;
 let sRaw = 0, sShown = 0, handoffT = 0, handoff = {from:0, to:1}, ticking = false, staticView = 'assembled';
 let currentView = '', currentStop = '', hwX = -1, hwRange = null;
 const listeners = new Set();
@@ -95,7 +102,7 @@ let captionText = '';
 function setCaption(lines2, o, rise){
  const text = lines2 ? lines2.join('|') : '';
  if (text !== captionText) {
-  captionText = text;
+  captionText = text; captionEl.w = 0;
   captionEl.innerHTML = lines2 ? `<span class="anno-name">${lines2[0]}</span>${lines2[1] ? `<span class="anno-tag">${lines2[1]}</span>` : ''}` : '';
  }
  captionEl.style.opacity = lines2 ? o.toFixed(3) : '0';
@@ -111,7 +118,10 @@ function captionRun(stopName){
  return {caption:c, first:list[a], last:list[b]};
 }
 
-function placeItem(it, spec, anchor, d, frame){
+// Label placement. Each label tries a few positions and takes the first one
+// where no leader line crosses any label and no two labels overlap.
+const PHONE_ROWS = [0, 40, 80], DESK = [[1,1,1],[1,1,1.45],[-1,1,1],[1,-1,1],[-1,-1,1],[-1,1,1.45],[1,-1,1.45],[-1,-1,1.45]];
+function geometry(it, spec, anchor, frame, v){
  const W = vw;
  let ex, ey, side, sx;
  if (spec.key && !compact.matches) {
@@ -121,32 +131,67 @@ function placeItem(it, spec, anchor, d, frame){
  } else if (compact.matches) {
   // Phones: labels sit in a lane above or below the board, never over it.
   const [lane, dx = 0, forced = 0, row = 0] = spec.m || ['above'], b = frame.bounds;
-  const top = frame.top + (captionText ? 64 : 24), bottom = frame.bottom - 24;
-  ey = lane === 'above' ? Math.max(top, Math.min(anchor.y - 28, (b ? b.top : anchor.y) - 18) - row) : Math.min(bottom, Math.max(anchor.y + 28, (b ? b.bottom : anchor.y) + 18) + row);
-  ex = anchor.x + dx; side = forced || (anchor.x + dx < W / 2 ? 1 : -1);
+  const top = frame.top + (captionText ? 64 : 24), bottom = frame.bottom - 24, r = row + PHONE_ROWS[v >> 1];
+  ey = lane === 'above' ? Math.max(top, Math.min(anchor.y - 28, (b ? b.top : anchor.y) - 18) - r) : Math.min(bottom, Math.max(anchor.y + 28, (b ? b.bottom : anchor.y) + 18) + r);
+  const s0 = forced || (anchor.x + dx < W / 2 ? 1 : -1);
+  ex = anchor.x + dx; side = v & 1 ? -s0 : s0;
  } else {
-  const k = frame.scale;
-  ex = anchor.x + spec.d[0] * k; ey = anchor.y + spec.d[1] * k; side = spec.d[0] >= 0 ? 1 : -1;
+  const k = frame.scale, m = DESK[v];
+  ex = anchor.x + spec.d[0] * k * m[0] * m[2]; ey = anchor.y + spec.d[1] * k * m[1] * m[2]; side = spec.d[0] * m[0] >= 0 ? 1 : -1;
  }
  if (sx === undefined) sx = ex + side * 12;
- it.path.setAttribute('d', `M${anchor.x.toFixed(1)} ${anchor.y.toFixed(1)}L${ex.toFixed(1)} ${ey.toFixed(1)}L${sx.toFixed(1)} ${ey.toFixed(1)}`);
+ const lw = it.w || 120, lh = it.h || 20, gutter = 12;
+ const want = side > 0 ? sx + 6 : sx - 6 - lw, lx = Math.max(gutter, Math.min(W - gutter - lw, want));
+ return {ax:anchor.x, ay:anchor.y, ex, ey, sx, side, lx, ly:ey - lh / 2, lw, lh, clamped:Math.abs(lx - want) > .5};
+}
+const VARIANTS = () => compact.matches ? PHONE_ROWS.length * 2 : DESK.length;
+function segHitsRect(x1, y1, x2, y2, r){
+ // Liang–Barsky clip of the segment against the rectangle.
+ let t0 = 0, t1 = 1; const dx = x2 - x1, dy = y2 - y1;
+ for (const [p, q] of [[-dx, x1 - r.x], [dx, r.x + r.w - x1], [-dy, y1 - r.y], [dy, r.y + r.h - y1]]) {
+  if (p === 0) { if (q < 0) return false; continue; }
+  const t = q / p;
+  if (p < 0) { if (t > t1) return false; if (t > t0) t0 = t; } else { if (t < t0) return false; if (t < t1) t1 = t; }
+ }
+ return true;
+}
+const rectsHit = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+function conflicts(g, placed, frame){
+ if (g.clamped) return true;
+ const R = {x:g.lx - 4, y:g.ly - 4, w:g.lw + 8, h:g.lh + 8};
+ if (R.y < frame.top - 4 || R.y + R.h > frame.limit) return true;
+ if (segHitsRect(g.ax, g.ay, g.ex, g.ey, R)) return true;
+ for (const p of placed) {
+  if (p.rect && rectsHit(R, p.rect)) return true;
+  for (const q of p.segs) if (segHitsRect(q[0], q[1], q[2], q[3], R)) return true;
+  if (p.rect) for (const q of [[g.ax, g.ay, g.ex, g.ey], [g.ex, g.ey, g.sx, g.ey]]) if (segHitsRect(q[0], q[1], q[2], q[3], p.rect)) return true;
+ }
+ return false;
+}
+function solve(it, spec, anchor, frame, placed){
+ let g = geometry(it, spec, anchor, frame, 0);
+ if (spec.key && !compact.matches) return g;
+ for (let v = 0; v < VARIANTS(); v++) {
+  const c = v ? geometry(it, spec, anchor, frame, v) : g;
+  if (!conflicts(c, placed, frame)) { g = c; break; }
+ }
+ placed.push({segs:[[g.ax, g.ay, g.ex, g.ey], [g.ex, g.ey, g.sx, g.ey]], rect:{x:g.lx - 4, y:g.ly - 4, w:g.lw + 8, h:g.lh + 8}});
+ return g;
+}
+function placeItem(it, g, d){
+ const {ax, ay, ex, ey, sx, side} = g;
+ it.path.setAttribute('d', `M${ax.toFixed(1)} ${ay.toFixed(1)}L${ex.toFixed(1)} ${ey.toFixed(1)}L${sx.toFixed(1)} ${ey.toFixed(1)}`);
  const dotT = easeOut(span(d, [0, .3])), lineT = easeOut(span(d, [.2, .75])), labelT = easeOut(span(d, [.55, 1]));
  const stepped = layer.classList.contains('is-stepped');
- it.dot.setAttribute('cx', anchor.x.toFixed(1)); it.dot.setAttribute('cy', anchor.y.toFixed(1));
- it.ring.setAttribute('cx', anchor.x.toFixed(1)); it.ring.setAttribute('cy', anchor.y.toFixed(1));
+ it.dot.setAttribute('cx', ax.toFixed(1)); it.dot.setAttribute('cy', ay.toFixed(1));
+ it.ring.setAttribute('cx', ax.toFixed(1)); it.ring.setAttribute('cy', ay.toFixed(1));
  it.dot.style.opacity = dotT.toFixed(3); it.ring.style.opacity = (dotT * .35).toFixed(3);
  it.dot.style.transform = stepped ? '' : `scale(${(.6 + .4 * dotT).toFixed(3)})`;
- it.dot.style.transformOrigin = `${anchor.x}px ${anchor.y}px`;
+ it.dot.style.transformOrigin = `${ax}px ${ay}px`;
  it.path.style.strokeDashoffset = stepped ? '0' : (1 - lineT).toFixed(3);
  it.path.style.opacity = stepped ? lineT.toFixed(3) : (lineT > 0 ? '1' : '0');
  // The label sits at the end of the shoulder and slides 4px off it.
- // Label size is measured once per text change, not every frame.
- if (!it.w) { it.w = it.label.offsetWidth; it.h = it.label.offsetHeight; }
- const lw = it.w || 120, gutter = 12;
- let lx = side > 0 ? sx + 6 : sx - 6 - lw;
- lx = Math.max(gutter, Math.min(W - gutter - lw, lx));
- const lh = it.h || 20;
- it.label.style.transform = `translate3d(${(lx + (stepped ? 0 : side * 4 * (1 - labelT))).toFixed(1)}px,${(ey - lh / 2).toFixed(1)}px,0)`;
+ it.label.style.transform = `translate3d(${(g.lx + (stepped ? 0 : side * 4 * (1 - labelT))).toFixed(1)}px,${g.ly.toFixed(1)}px,0)`;
  it.label.style.opacity = labelT.toFixed(3);
  it.label.dataset.side = side > 0 ? 'right' : 'left';
 }
@@ -162,16 +207,17 @@ function annoFrame(){
  const r = stage.getBoundingClientRect(), c = host.getBoundingClientRect(), f = frameNow, b = lastFrame?.bounds;
  const bounds = b ? {left:b.left + c.left, right:b.right + c.left, top:b.top + c.top, bottom:b.bottom + c.top} : null;
  const scale = b ? Math.max(.55, Math.min(1.15, (b.right - b.left) / 900)) : 1;
- if (hwActive() && hwRegion) return {top:hwRegion.y, bottom:hwRegion.y + hwRegion.h, bounds, scale, offX:c.left, offY:c.top};
- // The assembly foot is taller on phones: lanes stay clear of it.
- const foot = compact.matches && root.dataset.chapter === 'assembly' ? (vw <= 480 ? 290 : 312) : f.bottom;
- return {top:r.top + f.top, bottom:r.top + r.height - foot, bounds, scale, offX:c.left, offY:c.top};
+ if (hwActive() && hwRegion) return {top:hwRegion.y, bottom:hwRegion.y + hwRegion.h, limit:hwRegion.y + hwRegion.h, bounds, scale, offX:c.left, offY:c.top};
+ return {top:r.top + f.top, bottom:r.top + r.height - f.bottom, limit:r.top + r.height - f.bottom + (compact.matches ? 0 : 4), bounds, scale, offX:c.left, offY:c.top};
 }
 function drawAnnotations(){
  if (!storyOn || !lastFrame || !scene || stage.dataset.visible === 'false') { layer.style.visibility = 'hidden'; return; }
  const s = lastFrame.progress;
  const frame = annoFrame();
  let n = 0;
+ const placed = [], stageBottom = stage.getBoundingClientRect().bottom;
+ // The caption is an obstacle too.
+ if (captionText && lastFrame.phase !== 'hardware') { if (!captionEl.w) captionEl.w = captionEl.offsetWidth; placed.push({segs:[], rect:{x:vw / 2 - captionEl.w / 2 - 6, y:frame.top + (compact.matches ? 0 : 0), w:captionEl.w + 12, h:compact.matches ? 52 : 44}}); }
  const addItems = (specs, base, drawOf) => {
   specs.forEach((spec, k) => {
    let anchor;
@@ -180,10 +226,12 @@ function drawAnnotations(){
    const d = drawOf(k);
    if (d <= 0) return;
    const it = item(n++); setItemText(it, spec);
-   const f = spec.key ? {...frame, bounds:overlay.getBoundingClientRect()} : frame;
+   const f = spec.key ? {...frame, bounds:overlay.getBoundingClientRect(), bottom:stageBottom - 8, limit:stageBottom - 8} : frame;
    it.g.style.display = ''; it.label.style.display = '';
    it.g.style.opacity = it.label.style.visibility = '';
-   placeItem(it, spec, anchor, d, f);
+   // Label size is measured once per text change, not every frame.
+   if (!it.w) { it.w = it.label.offsetWidth; it.h = it.label.offsetHeight; }
+   placeItem(it, solve(it, spec, anchor, f, placed), d);
    const fade = base.toFixed(3); it.g.style.opacity = fade; it.label.style.opacity = (parseFloat(it.label.style.opacity) * base).toFixed(3);
    if (spec.key && !compact.matches) { it.label.style.display = 'none'; }
   });
@@ -200,20 +248,19 @@ function drawAnnotations(){
   layer.dataset.band = 'dark';
   // The current stop, and the previous one while it exits.
   const stop = stopAt(tl, s), i = tl.stops.indexOf(stop);
-  for (const st of [tl.stops[i - 1], stop]) {
-   if (!st || !ANNOTATIONS[st.name]) continue;
-   const a = annotationState(tl, st, s);
-   if (!a.visible) continue;
-   addItems(ANNOTATIONS[st.name].items, 1 - a.exit, k => clamp01((a.draw - STAGGER[k]) / .8));
+  // Only the current stop's annotations are ever on screen.
+  if (ANNOTATIONS[stop.name]) {
+   const a = annotationState(tl, stop, s);
+   if (a.visible) addItems(ANNOTATIONS[stop.name].items, 1 - a.exit, k => clamp01((a.draw - STAGGER[k]) / .8));
   }
   // Caption for the current run of stops.
-  const run = captionRun(stop.name) || (i > 0 && captionRun(tl.stops[i - 1].name));
+  const run = captionRun(stop.name);
   if (run) {
    const first = annotationState(tl, run.first, s), last = annotationState(tl, run.last, s);
    const o = easeOut(first.draw) * (1 - last.exit);
    setCaption(run.caption, o, 4 * (1 - easeOut(first.draw)));
   } else setCaption(null, 0, 0);
-  captionEl.style.top = `${Math.round(frame.top + 4)}px`;
+  captionEl.style.top = `${Math.round(frame.top + (compact.matches ? 6 : 4))}px`;
  }
  hideFrom(n);
  layer.style.visibility = '';
@@ -261,11 +308,6 @@ async function loadSchematic(){
   [...svg.children].forEach(el => { if (!/^(defs|style)$/.test(el.tagName) && !el.matches('.trace')) groups.rest.push(el); });
   overlay.append(svg);
   overlaySvg = svg; overlayGroups = groups;
-  // Leader targets: a point along each group's first path, and its key entry.
-  for (const g of SCHEMATIC_GROUPS) {
-   const el = groups[g][0];
-   if (el) { try { const len = el.getTotalLength(); const pt = el.getPointAtLength(len * (g === 'logic' ? .35 : .5)); KEY_POINT[g] = {x:pt.x, y:pt.y}; } catch { /* ignore */ } }
-  }
   root.dataset.schematic = 'ready';
   update(true);
  } catch (error) {
@@ -286,7 +328,13 @@ function legendPoint(g){
  }
  return svgToScreen(KEY_LEGEND[g]);
 }
+// Leader target: a point along the group's first path. Measured on first use,
+// once the drawing is rendered (WebKit cannot measure a hidden path).
 function keyAnchor(g){
+ if (!KEY_POINT[g]) {
+  const el = overlayGroups?.[g]?.[0]; if (!el) return null;
+  try { const len = el.getTotalLength(); if (!len) return null; const pt = el.getPointAtLength(len * (g === 'logic' ? .35 : .5)); KEY_POINT[g] = {x:pt.x, y:pt.y}; } catch { return null; }
+ }
  const pt = svgToScreen(KEY_POINT[g]); if (!pt) return null;
  return {x:pt.x, y:pt.y, key:g};
 }
@@ -296,7 +344,7 @@ const docTop = el => el.getBoundingClientRect().top + scrollY;
 const setH = (el, px) => { const v = `${Math.max(0, Math.round(px))}px`; if (el && el.style.height !== v) el.style.height = v; };
 let frameNow = {top:0, bottom:0, hero:0};
 function measure(){
- vh = innerHeight; vw = innerWidth;
+ vh = screenH(); vw = innerWidth;
  if (!storyOn) return;
  tl = buildTimeline(compact.matches ? PACING.phone : PACING.desktop);
  scene?.setTimeline(tl);
@@ -330,7 +378,7 @@ const heroText = [...document.querySelectorAll('.hero > .hero-copy, .hero > .her
 let band = {top:0, bottom:0};
 function measureText(){
  for (const t of TEXT) {
-  t.els.forEach(el => { el.style.transform = 'none'; el.style.maskImage = el.style.webkitMaskImage = ''; el.dataset.live = ''; });
+  t.els.forEach(el => { el.style.transform = 'none'; el.style.opacity = ''; el.style.maskImage = el.style.webkitMaskImage = ''; el.dataset.live = ''; });
   t.rest = t.els.map(el => { const r = el.getBoundingClientRect(); return {top:r.top, height:r.height}; });
   t.top = Math.min(...t.rest.map(r => r.top)); t.height = Math.max(...t.rest.map(r => r.top + r.height)) - t.top;
  }
@@ -339,7 +387,38 @@ function measureText(){
  band.top = localBottom + (compact.matches ? 10 : 18);
  band.bottom = band.top + Math.min(tallest + (compact.matches ? 12 : 20), vh * (compact.matches ? .34 : .28));
 }
+// Phones: text and board take turns. During a stop's "read" stretch its copy
+// sits centred between the local nav and the controls, fully visible and never
+// masked; the board is faded out and returns as the copy leaves.
+const READ_FADE = .12;
+let boardShown = 1;
+function readText(){
+ const areaTop = band.top, areaBottom = stage.getBoundingClientRect().bottom - frameNow.bottom;
+ let board = 1;
+ for (const t of TEXT) {
+  const st = tl.byName[t.at], read = st.read || 0;
+  const o = read ? smooth(clamp01((sRaw - st.start) / READ_FADE)) * smooth(clamp01((st.readEnd - sRaw) / READ_FADE)) : 0;
+  board = Math.min(board, 1 - o);
+  // After the stats, the drawing's outline comes in directly: the board stays out until it does.
+  if (t.at === 'frame' && read && sRaw > st.start + read / 2 && sRaw < st.drawEnd) board = Math.min(board, clamp01((sRaw - st.moveEnd) / (st.draw || 1)));
+  const rising = sRaw < st.start + read / 2;
+  const top = areaTop + Math.max(0, (areaBottom - areaTop - t.height) / 2);
+  t.els.forEach((el, i) => {
+   el.style.maskImage = el.style.webkitMaskImage = '';
+   if (o <= 0) { if (el.dataset.live !== 'off') { el.style.transform = 'translate3d(0,-200vh,0)'; el.style.opacity = '0'; el.dataset.live = 'off'; } return; }
+   const dy = top - t.top + (1 - o) * (rising ? 12 : -8);
+   el.style.transform = `translate3d(0,${dy.toFixed(1)}px,0)`;
+   el.style.opacity = o.toFixed(3);
+   el.dataset.live = String(o > .5);
+  });
+ }
+ boardShown = board;
+ const h = 1 - smooth(clamp01(scrollY / (vh * .16)));
+ heroText.forEach(el => { el.style.opacity = h.toFixed(3); el.style.pointerEvents = h > .5 ? '' : 'none'; });
+}
 function travelText(){
+ if (compact.matches) { readText(); return; }
+ boardShown = 1;
  const FADE = 28;
  for (const t of TEXT) {
   const start = tl.byName[t.at].start;
@@ -349,7 +428,7 @@ function travelText(){
    if (!visible) { if (el.dataset.live !== 'off') { el.style.transform = 'translate3d(0,-200vh,0)'; el.dataset.live = 'off'; } return; }
    const restTop = t.rest[i].top, h = t.rest[i].height;
    const dy = band.top + y + (restTop - t.top) - restTop;
-   el.style.transform = `translate3d(0,${dy.toFixed(1)}px,0)`;
+   el.style.transform = `translate3d(0,${dy.toFixed(1)}px,0)`; el.style.opacity = '';
    const top = restTop + dy, a = band.top - top, b = band.bottom - top;
    const mask = `linear-gradient(to bottom,transparent ${a.toFixed(0)}px,#000 ${(a + FADE).toFixed(0)}px,#000 ${(b - FADE).toFixed(0)}px,transparent ${b.toFixed(0)}px)`;
    el.style.maskImage = el.style.webkitMaskImage = mask;
@@ -365,16 +444,21 @@ const smooth = t => t * t * (3 - 2 * t);
 function revealOnFocus(event){
  const t = TEXT.find(t => t.els.some(el => el.contains(event.target)));
  if (!t || t.els.some(el => el.contains(event.target) && el.dataset.live === 'true')) return;
+ const st = tl.byName[t.at];
+ if (compact.matches) { scrollTo({top:(st.start + st.read / 2) * vh, behavior:'instant'}); return; }
  const bandH = band.bottom - band.top, y = Math.max(0, (bandH - t.height) / 2);
  scrollTo({top:(tl.byName[t.at].start + (bandH - y) / vh) * vh, behavior:'instant'});
 }
 
 // ---------- Board framing ----------
+const PHONE_FOOT = 152; // control bar (or insertion panel) and the caption line under it
 function computeFrame(){
  const stageTop = stage.getBoundingClientRect().top;
  const heroEnd = $(compact.matches ? '.hero-bottom' : '.hero-actions');
  const heroBottom = heroEnd.getBoundingClientRect().bottom + scrollY - stageTop; // position at scroll 0
- return {top:Math.round(band.bottom - stageTop + (compact.matches ? 8 : 16)), bottom:compact.matches ? 120 : 24, hero:Math.round(heroBottom + (compact.matches ? 8 : 24))};
+ // Phones: no band is reserved; the board is centred between the local nav and the control bar.
+ if (compact.matches) return {top:8, bottom:PHONE_FOOT, hero:Math.round(heroBottom + 8)};
+ return {top:Math.round(band.bottom - stageTop + 16), bottom:24, hero:Math.round(heroBottom + 24)};
 }
 function frameScene(){
  if (!storyOn) return;
@@ -449,6 +533,7 @@ function setStop(stop){
  currentStop = stop;
  root.dataset.stop = stop;
  root.dataset.chapter = ASSEMBLY_STOPS.has(stop) ? 'assembly' : 'story';
+ root.dataset.controls = INSERTION_STOPS.has(stop) ? 'insertion' : ASSEMBLY_STOPS.has(stop) ? 'detail' : 'view';
  const view = viewFor(stop);
  document.querySelectorAll('[data-view]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view === view)));
  document.querySelectorAll('[data-inspect]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.inspect === stop)));
@@ -473,7 +558,7 @@ function layoutOverlay(){
   const room = region.height - frameNow.top - frameNow.bottom - 8;
   width = Math.min(rect.width, room * 1672/941); x = region.left + rect.x + (rect.width - width)/2; y = region.top + rect.y + rect.height/2 - width*941/1672/2;
  }
- else { width = Math.min(region.width * .92, 1100); x = region.left + (region.width - width)/2; const top = region.top + frameNow.top, bottom = region.bottom - frameNow.bottom; y = storyOn ? top + Math.max(0, (bottom - top - width*941/1672) / 2) : region.top + (region.height - width*941/1672)/2; }
+ else { width = Math.min(region.width * .92, 1100); x = region.left + (region.width - width)/2; const top = region.top + frameNow.top, bottom = region.bottom - 56; y = storyOn ? top + Math.max(0, (bottom - top - width*941/1672) / 2) : region.top + (region.height - width*941/1672)/2; }
  overlayBox = {x, y: storyOn ? y : y - region.top, width, height: width*941/1672, left: x - region.left};
  overlay.style.width = width + 'px'; overlay.style.height = overlayBox.height + 'px';
 }
@@ -549,7 +634,7 @@ function drawAppLines(){
 function stepped(s){
  if (s >= tl.hardware.start - 1) return tl.hardware.start + Math.round(s - tl.hardware.start);
  let pick = tl.stops[0];
- for (const st of tl.stops) if (s >= st.start + st.move * .5) pick = st;
+ for (const st of tl.stops) if (s >= st.readEnd + st.move * .5) pick = st;
  return Math.max(pick.start, (pick.hold ? pick.drawEnd : pick.end - .002)) + .001;
 }
 let lastSnap = -1;
@@ -566,7 +651,7 @@ function update(force = false){
  else if (sRaw > tl.end) s = tl.end;
  const step = reduced.matches;
  if (step) s = stepped(s);
- if (!force && s === sShown && h === handoffT) { travelText(); drawAppLines(); return; }
+ if (!force && s === sShown && h === handoffT) { travelText(); stage.style.setProperty('--board', boardShown.toFixed(3)); drawAppLines(); return; }
  const jumped = step && s !== lastSnap && lastSnap >= 0;
  lastSnap = s; sShown = s; handoffT = h;
  const pose = poseAt(tl, s);
@@ -582,6 +667,7 @@ function update(force = false){
  if (!hwRegion) drawSchematic(s, h);
  syncInsertion(pose);
  travelText();
+ stage.style.setProperty('--board', boardShown.toFixed(3));
  drawAppLines();
  layer.classList.toggle('is-stepped', step);
  if (!scene) drawAnnotations();
@@ -700,6 +786,8 @@ export const story = {
  loadScene,
  get scene(){ return scene; },
  get progress(){ return sShown; },
+ get stop(){ return currentStop; },
+ get compact(){ return compact.matches; },
  get timeline(){ return tl; },
  onProgress(fn){ listeners.add(fn); return () => listeners.delete(fn); },
  // Buttons jump to their stop: adjacent stops scroll, farther ones cut with a crossfade.
@@ -707,7 +795,7 @@ export const story = {
   if (storyOn) {
    const name = SHORTCUT[view] || view, target = scrollForStop(name);
    const far = Math.abs(target - scrollY) > vh * 1.2;
-   if (reduced.matches || far) { scene?.crossfadeTo(target / vh); scrollTo({top:target, behavior:'instant'}); }
+   if (reduced.matches || far || compact.matches) { scene?.crossfadeTo(target / vh); scrollTo({top:target, behavior:'instant'}); }
    else scrollTo({top:target, behavior:'smooth'});
    return;
   }

@@ -276,12 +276,13 @@ html:not([data-story=on]) .routing-section{padding-top:0}
    the board; annotations on the model carry the story.
    ===================================================================== */
 [data-story=on]{--band-top:calc(var(--local) + 18px)}
-[data-story=on] #product-stage{position:fixed;inset:var(--local) 0 0 0;z-index:0;pointer-events:none;opacity:var(--fade,1)}
+/* Sized in svh so Safari's address bar and toolbar never resize the stage. */
+[data-story=on] #product-stage{position:fixed;inset:var(--local) 0 auto 0;height:calc(100vh - var(--local));height:calc(100svh - var(--local));z-index:0;pointer-events:none;opacity:var(--fade,1)}
 [data-story=on] #product-stage[data-visible=false]{visibility:hidden}
 [data-story=on] #product-stage .stage-canvas{inset:0;pointer-events:auto}
 /* Nothing shows before the board enters; the reveal sets --intro. */
 [data-story=on] .stage-webgl{opacity:0}
-[data-story=on] .ready .stage-webgl{opacity:calc(var(--intro,0) * (1 - var(--dim,0)*.85));transition:none}
+[data-story=on] .ready .stage-webgl{opacity:calc(var(--intro,0) * (1 - var(--dim,0)*.85) * var(--board,1));transition:none}
 [data-story=on] #product-stage .scene-fallback{display:none}
 /* Loading: a soft cyan glow breathes where the board will land, then fades
    as the board rises through it (--intro). */
@@ -349,7 +350,7 @@ html:not([data-story=on]) .routing-section{padding-top:0}
 [data-story=on] #routing{padding:0}
 /* Copy in the band: positioned by scroll, masked at the band's edges. */
 [data-story=on] :is(#platform,.beat-routing,.beat-stats) .story-text{position:fixed;left:0;right:0;top:var(--band-top);z-index:2;max-width:none;margin:0;padding:0 var(--gutter);text-align:center;pointer-events:none;transform:translate3d(0,-200vh,0);will-change:transform}
-[data-story=on] .assembly-copy{position:fixed;left:0;right:0;top:var(--band-top);bottom:0;z-index:2;max-width:none;margin:0;padding:0 var(--gutter);text-align:center;pointer-events:none}
+[data-story=on] .assembly-copy{position:fixed;left:0;right:0;top:var(--band-top);height:calc(100vh - var(--band-top));height:calc(100svh - var(--band-top));z-index:2;max-width:none;margin:0;padding:0 var(--gutter);text-align:center;pointer-events:none}
 [data-story=on] .assembly-copy>:is(.eyebrow,.part-tabs,.part-text){transform:translate3d(0,-200vh,0);will-change:transform}
 [data-story=on] .assembly-copy>.eyebrow{display:block}
 [data-story=on] [data-live=true],[data-story=on] .story-text[data-live=true]>*{pointer-events:auto}
@@ -361,7 +362,6 @@ html:not([data-story=on]) .routing-section{padding-top:0}
 [data-story=on] .routing-stats strong{font-size:clamp(4rem,1.5rem + 4.6vw,6.5rem)}
 [data-story=on] .routing-stats span{margin-top:var(--s-2);font-size:var(--t-body)}
 [data-story=on] .beat-stats .source-note{margin-top:var(--s-4)}
-[data-story=on] .assembly-copy{bottom:0}
 [data-story=on] .assembly-copy .eyebrow{margin-bottom:0}
 [data-story=on] .assembly-copy .part-tabs{margin:var(--s-2) auto var(--s-3)}
 [data-story=on] .assembly-copy .part-text h3{font-size:clamp(1.5rem,1rem + 1.4vw,2.25rem)}
@@ -457,6 +457,27 @@ html:not([data-story=on]) .routing-section{padding-top:0}
  [data-story=on] .assembly-copy>.source-note{display:none}
  [data-story=on] .assembly-copy .insertion-control{bottom:26px}
  [data-story=on] .assembly-stage .detail-views{bottom:146px}
+}
+
+/* Phones: one compact control bar at the foot of the stage. The view switch,
+   the detail tabs and the insertion panel take turns in the same place, and
+   the board is always framed (and clipped) above them. */
+@media (max-width:959px){
+ [data-story=on] #product-stage .stage-canvas{transform:none;-webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 166px),transparent calc(100% - 146px));mask-image:linear-gradient(to bottom,#000 calc(100% - 166px),transparent calc(100% - 146px))}
+ [data-story=on][data-chapter=assembly] #product-stage .stage-canvas{transform:none}
+ [data-story=on] #product-stage[data-phase=hardware] .stage-canvas{-webkit-mask-image:none;mask-image:none}
+ /* The board is fully out while the drawing is on (it is not registered to it on phones). */
+ [data-story=on] .ready .stage-webgl{opacity:calc(var(--intro,0) * (1 - var(--dim,0)) * var(--board,1))}
+ [data-story=on] .scene-controls{bottom:44px}
+ [data-story=on] .assembly-stage .detail-views{left:0;right:0;margin-inline:auto;width:max-content;max-width:calc(100vw - var(--gutter)*2);flex-wrap:nowrap;bottom:auto;top:calc(100svh - 44px);transform:translateY(-100%)}
+ [data-story=on] .assembly-copy .insertion-control{left:0;right:0;margin-inline:auto;bottom:46px;width:min(calc(100vw - var(--gutter)*2),420px);max-width:none}
+ [data-story=on] .assembly-stage .assembly-note{left:0;right:0;bottom:auto;top:calc(100svh - 8px);transform:translateY(-100%);text-align:center}
+ /* One caption line under the bar: the model note, or the motion note at the insertion stop. */
+ [data-story=on] .assembly-copy>.source-note{display:block;left:var(--gutter);right:var(--gutter);bottom:4px;max-width:none;text-align:center}
+ [data-story=on]:not([data-controls=insertion]) .assembly-copy>.source-note,[data-story=on][data-controls=insertion] .assembly-stage .assembly-note{opacity:0;visibility:hidden}
+ [data-story=on]:not([data-controls=insertion]) .insertion-control,[data-story=on][data-controls=insertion] .assembly-stage .detail-views{opacity:0;visibility:hidden;transition:opacity var(--dur-2) ease,visibility 0s linear var(--dur-2)}
+ /* Copy has the stage to itself during its moment. */
+ [data-story=on] :is(#platform,.beat-routing,.beat-stats) .story-text,[data-story=on] .assembly-copy>:is(.eyebrow,.part-tabs,.part-text){opacity:0;will-change:transform,opacity}
 }
 
 /* ---------- Reduced motion ---------- */
