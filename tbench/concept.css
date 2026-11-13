@@ -328,3 +328,12 @@ p{text-wrap:pretty}
 .page-home .hero-grid{padding-top:calc(var(--header,44px) + clamp(44px,6vw,92px))}
 .sub-hero-grid{padding-top:clamp(72px,8.4vw,124px)!important}
 .page-editorial .ed-hero{padding-top:clamp(72px,8.4vw,124px)!important}
+/* ---------- Footer on black ---------- */
+.site-footer{background:var(--c-black)!important;color:var(--c-on-dark-2)}
+.site-footer :focus-visible{outline-color:var(--c-cyan)}
+.site-footer .brand .brand-logo{filter:none;opacity:1}
+.site-footer .footer-top{border-bottom-color:var(--c-line-dark)}
+.site-footer .footer-top>div:first-child p,.site-footer .footer-bottom,.site-footer .footer-note{color:var(--c-on-dark-2)}
+.site-footer .footer-nav strong{color:var(--c-on-dark)}
+.site-footer :is(.footer-nav a,.footer-bottom a){color:var(--c-on-dark-2)}
+@media (hover:hover) and (pointer:fine){.site-footer :is(.footer-nav a,.footer-bottom a):hover{color:var(--c-on-dark)}}

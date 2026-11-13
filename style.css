@@ -522,3 +522,10 @@ html[data-story=on][data-snap=on]{scroll-snap-type:y proximity}
  :root{--t-h2-phone:clamp(2rem,calc((100vw - var(--gutter)*2)/10.4),2.5rem)}
  h2,[data-story=on] :is(#platform,.beat-routing) h2{font-size:var(--t-h2-phone)}
 }
+
+/* ---------- Footer on black ---------- */
+body:has(.footer){background:var(--c-black)}
+.footer{max-width:none;padding-inline:max(var(--gutter),calc((100% - var(--content))/2 + var(--gutter)));border-top:0;background:var(--c-black);color:var(--c-on-dark-2)}
+.footer :focus-visible{outline-color:var(--c-cyan)}
+.footer .brand-logo{filter:none;opacity:1}
+.footer>a:not(.brand){color:var(--c-on-dark)}
