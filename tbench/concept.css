@@ -324,3 +324,7 @@ p{text-wrap:pretty}
 /* Homepage "Meet UniJack": the same clear space above the board (below the last link) as below it. */
 .page-home .feature-section{--photo-gap:clamp(48px,6vw,88px);padding-bottom:calc(var(--photo-gap) + 13px)!important}
 .page-home .feature-section .feature-grid{gap:var(--photo-gap)}
+/* More room between the header and the hero on every TBench page. */
+.page-home .hero-grid{padding-top:calc(var(--header,44px) + clamp(44px,6vw,92px))}
+.sub-hero-grid{padding-top:clamp(72px,8.4vw,124px)!important}
+.page-editorial .ed-hero{padding-top:clamp(72px,8.4vw,124px)!important}

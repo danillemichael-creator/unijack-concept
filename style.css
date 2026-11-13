@@ -353,7 +353,8 @@ html[data-story=on][data-snap=on]{scroll-snap-type:y proximity}
 [data-story=on] :is(main>.hero,.beat-proof,#platform,.assembly-section,#routing){position:relative;z-index:1;pointer-events:none}
 [data-story=on] :is(.hero-copy,.hero-bottom)>*{pointer-events:auto}
 [data-story=on] .hero{min-height:calc(100svh - var(--local))}
-[data-story=on] .hero-copy{padding-top:clamp(16px,3svh,36px)}
+/* Breathing room between the header and the hero copy. */
+[data-story=on] .hero-copy{padding-top:clamp(40px,6svh,64px)}
 [data-story=on] .hero-bottom{position:absolute;left:0;right:0;bottom:0;height:96px;pointer-events:none}
 [data-story=on] .hero-bottom>span{position:absolute;left:var(--gutter);bottom:42px;max-width:16em;text-align:left;pointer-events:auto}
 [data-story=on] .hero-bottom>a{position:absolute;right:var(--gutter);bottom:30px;pointer-events:auto}
