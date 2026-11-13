@@ -12,7 +12,8 @@
     "size": [
       1422,
       687
-    ]
+    ],
+    "superseded_by": "unijack (re-crop 2026-11-12)"
   },
   {
     "name": "mercury",
@@ -43,5 +44,47 @@
       675,
       351
     ]
+  },
+  {
+    "name": "unijack (re-crop 2026-11-12)",
+    "source": "gallery-3.jpg",
+    "source_size": [
+      3000,
+      1688
+    ],
+    "board_box_px": [
+      772,
+      31,
+      2226,
+      736
+    ],
+    "bounds": [
+      0.2573,
+      0.0184,
+      0.742,
+      0.436
+    ],
+    "rotation": 0,
+    "perspective": "none (board edges measured at +0.36 deg top, -0.42 deg bottom; net tilt 0.03 deg, left as photographed)",
+    "margin_px": 12,
+    "size": [
+      1478,
+      729
+    ],
+    "mask": "pixels connected to the board that are not near-white (any channel below 250), interior holes filled. In the outer 3-pixel band only, pixels that are themselves almost white (every channel 235 or above: the JPEG halo) fade out by how close to white they are; the darkest pixel made partly transparent has a minimum channel value of 236. Everything outside the mask is transparent. Canvas extended with blank margin; no pixels synthesised.",
+    "colour": "unchanged",
+    "tools": "Pillow and NumPy only: crop, mask, canvas margin, Lanczos downscale for the WebP sizes. No generative or AI tools, no upscaling, no retouching.",
+    "outputs": {
+      "assets/products/unijack.jpg": "1478x729, on the tile tone #e7f2f1, JPEG q92 4:4:4 (fallback)",
+      "assets/responsive/unijack-1200.webp": "1200x592, transparent background, WebP q86",
+      "assets/responsive/unijack-720.webp": "720x355, transparent background, WebP q86"
+    },
+    "verification": {
+      "master_vs_source_inside_opaque_mask": "identical, 0 of 981,403 pixels differ",
+      "unijack.jpg_ssim_vs_source_region_board_only": 0.989,
+      "unijack-1200.webp_ssim_vs_resized_source_region": 0.9812,
+      "unijack-720.webp_ssim_vs_resized_source_region": 0.9801
+    },
+    "mercury_periboard_note": "The approved thumbnails mercury-straight-approved.avif (138x256) and periboard-straight-approved.avif (346x190) were left untouched. No full-resolution source for them exists in the repository or its history, and they cannot be reproduced from gallery-3.jpg / gallery-4.jpg by crop, rotation and resize (SSIM 0.27 and 0.36 against the aligned photographs)."
   }
 ]

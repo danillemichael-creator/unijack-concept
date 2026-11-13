@@ -195,8 +195,10 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border:0;border-radiu
 .section-topline>p{color:var(--c-on-light-2);font-size:var(--t-lead);line-height:1.4;letter-spacing:-.012em}
 .product-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(16px,2.4vw,32px);max-width:var(--max);margin:0 auto}
 .product-card{display:flex;flex-direction:column;align-items:center;min-width:0;text-align:center}
-.photo-window{position:relative;display:flex;align-items:center;justify-content:center;width:100%;aspect-ratio:4/3.4;margin-bottom:var(--s-6);border-radius:var(--radius-tile);background:var(--c-white);overflow:hidden}
-.photo-window img{width:100%;height:100%;object-fit:contain;padding:8%;mix-blend-mode:multiply;transition:transform 300ms var(--ease-out)}
+/* Tile ground = the pale tone the approved Mercury and PeriBoard photos sit on, so their own
+   backgrounds and the transparent UniJack cut-out read as one surface. */
+.photo-window{position:relative;display:flex;align-items:center;justify-content:center;width:100%;aspect-ratio:4/3.4;margin-bottom:var(--s-6);border-radius:var(--radius-tile);background:#e7f2f1;overflow:hidden}
+.photo-window img{width:100%;height:100%;object-fit:contain;padding:8%;transition:transform 300ms var(--ease-out)}
 .photo-mercury img{height:86%;width:auto;padding:0}
 .photo-peri img{width:80%;height:auto;max-height:70%;padding:0}
 .product-card-body{display:flex;flex-direction:column;align-items:center;gap:var(--s-2);max-width:22rem}
