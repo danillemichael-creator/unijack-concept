@@ -289,8 +289,10 @@ p{text-wrap:pretty}
 @media (max-width:599px){
  .page-subpage:not(.page-product) .sub-hero-card>strong{font-size:clamp(2rem,calc((100vw - var(--gutter)*2)/10.4),2.5rem)}
 }
-/* Related-hardware photo: a tiny blurred preview fills the frame while the photo loads; the photo then fades in. */
-.related-photo{background:#eceff1 url("data:image/webp;base64,UklGRnwAAABXRUJQVlA4IHAAAACQBACdASogABIAPuVgp02pJaOiMAwBIByJQBb3A9IG37IxL/8L2i1IqQ94ZSgA/vO+Wv3OnGTTy2hSzxiDg0k8OARUjOMO1yxpeOuI4AB/rkMDSBgmpZ1GLHc92YEWF1ydTWlmFpeAc1T4sjHyAAAA") center/cover no-repeat!important}
+/* Board photos are transparent cut-outs: they sit directly on the section or tile ground,
+   with no frame of their own. The related-hardware photo fades in when it arrives. */
+.feature-photo,.related-photo{border-radius:0!important;background:none!important;overflow:visible}
+.feature-photo img,.related-photo img{width:100%;height:auto;aspect-ratio:auto;object-fit:contain}
 .related-photo img{display:block;transition:opacity 400ms var(--ease-out,ease-out)}
 .related-photo[data-loading] img{opacity:0}
 @media (prefers-reduced-motion:reduce){.related-photo img{transition:none}}

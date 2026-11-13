@@ -86,5 +86,46 @@
       "unijack-720.webp_ssim_vs_resized_source_region": 0.9801
     },
     "mercury_periboard_note": "The approved thumbnails mercury-straight-approved.avif (138x256) and periboard-straight-approved.avif (346x190) were left untouched. No full-resolution source for them exists in the repository or its history, and they cannot be reproduced from gallery-3.jpg / gallery-4.jpg by crop, rotation and resize (SSIM 0.27 and 0.36 against the aligned photographs)."
+  },
+  {
+    "name": "unijack-assembled (cut-out of the angled assembly photo, 2026-11-12)",
+    "source": "gallery-1.jpg (left unchanged; still used as the social preview image and the UniJack page photo fallback)",
+    "source_size": [
+      3000,
+      1688
+    ],
+    "board_box_px": [
+      389,
+      18,
+      2640,
+      1680
+    ],
+    "rotation": 0,
+    "perspective": "as photographed",
+    "colour": "unchanged",
+    "margin_px": 48,
+    "size": [
+      2347,
+      1758
+    ],
+    "mask": "everything not connected to the image border through near-white pixels (every channel 250 or above) is kept, so enclosed light parts stay opaque; 3,007 detached halo specks (all 237 or lighter) dropped. In the outer 3-pixel band only, pixels that are themselves almost white (every channel 235 or above) fade out by how close to white they are. Canvas extended with blank margin; no pixels synthesised.",
+    "tools": "Pillow and NumPy only: mask, canvas margin, Lanczos downscale for the smaller sizes. No generative or AI tools, no upscaling, no retouching.",
+    "outputs": {
+      "assets/products/unijack-assembled.webp": "2347x1758 (source resolution), transparent, WebP q90",
+      "assets/responsive/unijack-assembled-1800.webp": "1800x1348, transparent, WebP q86",
+      "assets/responsive/unijack-assembled-1000.webp": "1000x749, transparent, WebP q86"
+    },
+    "verification": {
+      "master_vs_source_inside_opaque_mask": "identical, 0 of 2,608,055 pixels differ",
+      "unijack-assembled.webp_ssim_board_only": 0.9838,
+      "unijack-assembled-1800.webp_ssim_board_only": 0.9774,
+      "unijack-assembled-1000.webp_ssim_board_only": 0.979
+    },
+    "used_on": [
+      "tbench/index.html (Meet UniJack)",
+      "tbench/academia/index.html",
+      "tbench/enterprise/index.html",
+      "tbench/builders/index.html"
+    ]
   }
 ]
