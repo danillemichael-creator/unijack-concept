@@ -339,3 +339,6 @@ p{text-wrap:pretty}
 @media (hover:hover) and (pointer:fine){.site-footer :is(.footer-nav a,.footer-bottom a):hover{color:var(--c-on-dark)}}
 /* Homepage hero without the audience card: the capability line gets room above and below. */
 .page-home .capability-strip .container{padding-block:var(--s-6) var(--s-7)}
+
+/* Homepage hero on phones and small tablets: the heading is sized so its first line fits the screen width. */
+@media (max-width:767px){.page-home .hero h1{font-size:min(3.5rem,calc((100vw - var(--gutter)*2)/10))}}
