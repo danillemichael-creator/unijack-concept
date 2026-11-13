@@ -337,3 +337,5 @@ p{text-wrap:pretty}
 .site-footer .footer-nav strong{color:var(--c-on-dark)}
 .site-footer :is(.footer-nav a,.footer-bottom a){color:var(--c-on-dark-2)}
 @media (hover:hover) and (pointer:fine){.site-footer :is(.footer-nav a,.footer-bottom a):hover{color:var(--c-on-dark)}}
+/* Homepage hero without the audience card: the capability line gets room above and below. */
+.page-home .capability-strip .container{padding-block:var(--s-6) var(--s-7)}
