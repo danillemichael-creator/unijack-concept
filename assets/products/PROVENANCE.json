@@ -121,6 +121,44 @@
       "unijack-assembled-1800.webp_ssim_board_only": 0.9774,
       "unijack-assembled-1000.webp_ssim_board_only": 0.979
     },
+    "used_on": [],
+    "status": "superseded by unijack-front; the three unijack-assembled files were removed from the site"
+  },
+  {
+    "name": "unijack-front (cut-out of the straight-on assembly photo, 2026-11-12)",
+    "source": "gallery-2.jpg (left unchanged; the 3D model uses it as a texture)",
+    "source_size": [
+      3000,
+      1688
+    ],
+    "board_box_px": [
+      24,
+      59,
+      2913,
+      1632
+    ],
+    "source_edge_check": "the board does not touch the frame: at least 19px of pure white on the left, 87px on the right, 50px above and 56px below; USB and Ethernet jacks are complete",
+    "rotation": 0,
+    "perspective": "as photographed",
+    "colour": "unchanged",
+    "margin_px": 48,
+    "size": [
+      2985,
+      1669
+    ],
+    "mask": "everything not connected to the image border through near-white pixels (every channel 250 or above) is kept, so enclosed light parts stay opaque; 3,891 detached halo specks (all 235 or lighter) dropped. In the outer 3-pixel band only, pixels that are themselves almost white (every channel 235 or above) fade out by how close to white they are. Canvas extended with blank margin; no pixels synthesised.",
+    "tools": "Pillow and NumPy only: mask, canvas margin, Lanczos downscale for the smaller sizes. No generative or AI tools, no upscaling, no retouching.",
+    "outputs": {
+      "assets/products/unijack-front.webp": "2985x1669 (source resolution), transparent, WebP q90. Master only: no page references it and it is left out of the hosted deploy",
+      "assets/responsive/unijack-front-1800.webp": "1800x1006, transparent, WebP q86",
+      "assets/responsive/unijack-front-1000.webp": "1000x559, transparent, WebP q86"
+    },
+    "verification": {
+      "master_vs_source_inside_opaque_mask": "identical, 0 of 4,270,358 pixels differ",
+      "unijack-front.webp_ssim_board_only": 0.9885,
+      "unijack-front-1800.webp_ssim_board_only": 0.9833,
+      "unijack-front-1000.webp_ssim_board_only": 0.9847
+    },
     "used_on": [
       "tbench/index.html (Meet UniJack)",
       "tbench/academia/index.html",
